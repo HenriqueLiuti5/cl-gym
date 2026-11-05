@@ -1,0 +1,48 @@
+# Catálogo de treino do CL Gym.
+#
+# Depois de editar, carregue no banco com:  uv run python -m backend.seed
+#
+# Regras:
+# - `slug` é o identificador fixo (minúsculas e hífens). Não mude o slug de algo que já está
+#   em uso: o histórico de cargas está ligado a ele. Para renomear, mude só o `nome`.
+# - `substituto` é o slug de outro exercício que trabalha exatamente o mesmo músculo.
+# - A ordem dos exercícios dentro da ficha é a ordem em que aparecem aqui.
+#
+# Exemplo de exercício:
+#
+# [[exercicios]]
+# slug = "supino-reto-barra"
+# nome = "Supino reto com barra"
+# grupo_muscular = "Peito"
+# substituto = "supino-reto-maquina"
+# imagens = []        # URLs das imagens de demonstração
+# instrucoes = []     # passos da execução, em português
+#
+# E dentro da ficha:
+#   exercicios = [
+#     { exercicio = "supino-reto-barra", series = 4, repeticoes = "8-10" },
+#   ]
+
+[[fichas]]
+slug = "peito-triceps"
+nome = "Peito e Tríceps"
+ordem = 1
+exercicios = []
+
+[[fichas]]
+slug = "costas-biceps"
+nome = "Costas e Bíceps"
+ordem = 2
+exercicios = []
+
+[[fichas]]
+slug = "perna"
+nome = "Perna"
+ordem = 3
+exercicios = []
+
+[[fichas]]
+slug = "upper"
+nome = "Upper"
+ordem = 4
+exercicios = []
