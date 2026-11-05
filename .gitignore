@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Ambiente e bancos locais
+.env
+*.db
+*.db-journal
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Vercel
+.vercel/
+
+# Editores / sistema
+.vscode/
+.idea/
+.DS_Store
