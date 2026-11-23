@@ -5,11 +5,12 @@ como PWA instalada. Tudo precisa rodar **de graça**.
 
 ## Git e commits
 
-- **Commite sempre como se fosse o Henrique.** O autor é o do `git config` dele. Não adicione
-  `Co-Authored-By`, "Generated with Claude Code" nem qualquer menção ao Claude em commits,
-  descrições de PR ou comentários.
+- O autor dos commits é o do `git config` do Henrique. O projeto é feito com o Claude Code, e
+  isso não se esconde: commits feitos com ele podem levar a linha `Co-Authored-By` do Claude.
 - Mensagens de commit em português, no imperativo e curtas (ex.: "Adiciona registro de carga").
-- Repositório privado: `github.com/HenriqueLiuti5/cl-gym`, branch `main`.
+- Repositório público: `github.com/HenriqueLiuti5/cl-gym`, branch `main`. O README é em inglês,
+  porque é peça de portfólio; o resto (código, comentários, este arquivo) segue em português.
+- A CI (`.github/workflows/ci.yml`) roda `ruff check`, `ruff format --check` e `pytest` a cada push.
 
 ## Stack
 
