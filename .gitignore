@@ -21,3 +21,7 @@ frontend/dist/
 .vscode/
 .idea/
 .DS_Store
+
+# Claude Code (arquivos locais)
+CLAUDE.local.md
+.claude/settings.local.json
