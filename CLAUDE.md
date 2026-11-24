@@ -40,8 +40,9 @@ uv run ruff check . && uv run ruff format .
 uv run alembic revision --autogenerate -m "descrição"   # depois de mudar models.py
 ```
 
-Configuração via `.env` (veja `.env.example`): hoje `DATABASE_URL` e `APP_TOKEN`. Com o plano
-multiusuário, o `APP_TOKEN` sai e entram `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` e `EMAILS_PERMITIDOS`.
+Configuração via `.env` (veja `.env.example`): `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `SESSAO_SECRET`
+(mínimo 32 caracteres), `EMAILS_PERMITIDOS` (separados por vírgula) e, opcional, `SESSAO_DIAS`
+(padrão 90). As migrações e o seed só precisam do `DATABASE_URL`.
 
 ## Estrutura
 
@@ -49,16 +50,19 @@ multiusuário, o `APP_TOKEN` sai e entram `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` e 
 api/index.py            entrada da Vercel (importa backend.main:app)
 backend/
   main.py               app FastAPI (/api/health, rotas)
-  config.py             Settings (DATABASE_URL, APP_TOKEN)
-  db.py                 engine, sessão, tipo UTCDateTime
-  auth.py               token Bearer único
+  config.py             Settings (banco, Google, sessão, convites)
+  db.py                 engine, sessão, tipos UTCDateTime e ListaUUID
+  auth.py               verificação do ID token do Google, token de sessão, usuário atual
+  conta.py              primeiro login (cópia das fichas modelo), apagar e exportar conta
   models.py             tabelas + esquemas de sincronização
-  sync.py               lógica de envio/download
+  sync.py               lógica de envio/download, separada por usuário
+  routers/auth.py       POST /api/auth/google
+  routers/conta.py      GET/PATCH/DELETE /api/conta, GET /api/conta/exportar
   routers/sync.py       GET/POST /api/sync
   seed.py               carrega o catálogo do TOML
-  data/treino.toml      exercícios, substitutos e fichas do Henrique
+  data/treino.toml      exercícios do catálogo e fichas modelo
   migrations/           Alembic
-  tests/
+  tests/                conftest (login simulado, sem rede), dados de exemplo e testes
 frontend/               (a criar) app React
 vercel.json             rewrite /api/* → função Python
 ```
@@ -73,32 +77,44 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
 
 - Todo registro tem `id` (UUID **gerado no app**), `atualizado_em` (com fuso), `excluido`
   (exclusão lógica, nunca apagar de verdade) e `versao` (definida pelo servidor).
-- `POST /api/sync`: o app envia `{exercicios, fichas, ficha_exercicios, sessoes, series}` com o
-  que mudou localmente. **Vence o `atualizado_em` mais recente**; registro igual ou mais antigo é
+- `POST /api/sync`: o app envia `{exercicios, fichas, ficha_exercicios, sessoes, series,
+  registros_diarios}` com o que mudou localmente. **Vence o `atualizado_em` mais recente**; registro igual ou mais antigo é
   ignorado (reenviar é seguro). O envio é atômico: uma referência inválida devolve 409 e nada é
   gravado.
 - `GET /api/sync?desde=<cursor>`: devolve o que mudou depois do cursor e o novo `cursor`. O app
   guarda o cursor. Se `desde` for maior que o cursor do servidor (banco recriado), volta tudo.
 - Ciclo do app: enviar pendentes → baixar desde o último cursor → salvar o cursor.
-- Hoje: todas as rotas exceto `/api/health` exigem `Authorization: Bearer <APP_TOKEN>`. No plano
-  multiusuário, o Bearer passa a ser o token de sessão do usuário, e o envio e o download só
-  enxergam os registros dele (veja abaixo).
+- Todas as rotas exceto `/api/health` e `/api/auth/google` exigem `Authorization: Bearer <token
+  de sessão>`. O envio e o download só enxergam os registros do usuário (veja abaixo).
+- **Isolamento:** o servidor grava o `usuario_id` do token (ignora o que vier do app). O download
+  traz os registros do usuário e os exercícios do catálogo. No envio, alterar registro de outro
+  usuário ou do catálogo dá **403**, e apontar para ele conta como inexistente (**409**, com a
+  mesma mensagem de "não existe"). Nos dois casos nada é gravado.
+- **RegistroDiario:** só um por usuário e data, então o app deve gerar o `id` de forma
+  determinística (ex.: UUID v5 de `usuario_id` + data), igual em todos os aparelhos. Dois ids
+  diferentes para a mesma data dão 409.
 
 ## Modelo de dados
 
-Como está hoje no código. O plano multiusuário muda isto: `usuario_id` em tudo, `alvo_reps` no
-lugar de `repeticoes` e `alternativas` no item da ficha no lugar do `substituto_id`.
+Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (veja acima) e
+`usuario_id`, definido pelo servidor. Com `usuario_id` nulo, exercícios e fichas são do catálogo.
 
-- **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT), midia_url (GIF
-  ou vídeo escolhido no app) e `substituto_id`, **um** exercício que trabalha exatamente o mesmo
-  músculo, para quando o aparelho estiver ocupado.
-- **Ficha**: treino nomeado (Peito e Tríceps, Costas e Bíceps, Perna, Upper) e `ordem`.
-- **FichaExercicio**: exercício planejado na ficha, com ordem, series, repeticoes (texto: "8-12",
-  "até a falha") e observacao.
-- **Sessao**: um treino feito (ficha_id, iniciada_em, finalizada_em).
+- **Usuario** (não sincroniza; `GET/PATCH /api/conta`): `id`, `google_sub` (único), `email`,
+  `nome`, `criado_em` e as metas opcionais `meta_kcal`, `meta_proteina_g`, `meta_peso_kg`.
+- **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT) e midia_url (GIF
+  ou vídeo). Os do catálogo vêm do seed e só o seed altera; cada um pode criar os seus. É o único
+  download que traz `usuario_id` (nulo = catálogo, só leitura no app).
+- **Ficha**: treino nomeado (Push, Pull, Leg day, Upper) e `ordem`. As do catálogo são **modelos**:
+  não são baixadas, só copiadas para o usuário no primeiro login (`backend/conta.py`).
+- **FichaExercicio**: exercício planejado na ficha, com `ordem`, `series`, `alvo_reps` (int),
+  `aquecimento` (bool), `grupo_biset` (int ou nulo), `alternativas` (lista ordenada de até 2
+  `exercicio_id`, o Plano B) e `observacao` (dicas de execução).
+- **Sessao**: um treino feito (ficha_id, iniciada_em, finalizada_em, observacao).
 - **Serie**: uma série registrada (sessao_id, exercicio_id **realmente feito**,
-  ficha_exercicio_id planejado, numero, carga_kg, repeticoes). Cada exercício, inclusive o
-  substituto, tem o próprio histórico de carga.
+  ficha_exercicio_id planejado, numero, carga_kg, repeticoes). Cada exercício, inclusive as
+  alternativas, tem o próprio histórico de carga.
+- **RegistroDiario**: um por usuário e `data`, com `peso_kg` (em jejum), `kcal`, `proteina_g` e
+  `observacao`, todos opcionais.
 
 ## Regras de negócio (implementar no frontend, sobre os dados locais)
 
@@ -108,14 +124,15 @@ lugar de `repeticoes` e `alternativas` no item da ficha no lugar do `substituto_
   desempate por `ordem`). É só sugestão, todas as fichas continuam selecionáveis.
 - **Última vez**: para cada exercício, mostrar carga × reps da sessão mais recente em que ele foi
   feito.
-- **Trocar**: alterna entre o exercício planejado e o seu substituto; a série é gravada com o
-  `exercicio_id` do que foi feito.
+- **Trocar**: alterna entre o exercício planejado e as alternativas do item (Plano B); a série é
+  gravada com o `exercicio_id` do que foi feito.
 - **Gráfico de evolução**: por exercício, a maior `carga_kg` de cada sessão ao longo do tempo.
 - Sem timer de descanso na primeira versão.
 
 ## Catálogo (seed)
 
-`backend/data/treino.toml` é a fonte dos exercícios e das fichas. IDs = `uuid5` do slug, então
+`backend/data/treino.toml` é a fonte dos exercícios do catálogo e das fichas modelo (formato
+explicado no próprio arquivo). IDs = `uuid5` do slug, então
 rodar o seed de novo só regrava o que mudou (com versão nova, para os celulares baixarem). Não
 mude slugs em uso, porque o histórico está ligado a eles. Demonstrações: imagens da base de domínio
 público **free-exercise-db** e um link para busca no YouTube. Não copie GIFs com direitos autorais
@@ -246,8 +263,8 @@ mudar à vontade (nova migração, sem migrar dados).
 
 - [x] Backend de um usuário: modelos, migrações, sincronização, autenticação, seed e testes
 - [x] Plano multiusuário e custo zero decidido (24/11/2026)
-- [ ] Backend multiusuário + login com Google + convites
-- [ ] Modelo novo do treino (alvo, aquecimento, bi-set, Plano B duplo, registro diário)
+- [x] Backend multiusuário + login com Google + convites, isolamento, apagar/exportar conta
+- [x] Modelo novo do treino (alvo, aquecimento, bi-set, Plano B duplo, registro diário, metas)
 - [ ] Fichas modelo no `treino.toml` (treino v2 do vault) + imagens
 - [ ] Frontend PWA
 - [ ] Deploy Vercel + Neon e instalação nos celulares
