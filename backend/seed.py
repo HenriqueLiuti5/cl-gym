@@ -1,4 +1,4 @@
-"""Carrega o catálogo de treino (exercícios e fichas) de um arquivo TOML para o banco.
+"""Carrega o catálogo de treino (exercícios e fichas modelo) de um arquivo TOML para o banco.
 
 Uso:
     uv run python -m backend.seed                  # usa backend/data/treino.toml
@@ -6,8 +6,11 @@ Uso:
 
 Pode rodar quantas vezes quiser: os ids são derivados dos slugs (sempre os mesmos) e só o que
 mudou no arquivo é regravado — e recebe uma `versao` nova, então os celulares baixam a mudança.
-Itens removidos de uma ficha no arquivo são marcados como excluídos. O link de mídia escolhido
-no app (`midia_url`) nunca é sobrescrito.
+Itens removidos de uma ficha no arquivo são marcados como excluídos.
+
+Tudo o que o seed grava é do catálogo (`usuario_id` nulo): os exercícios são baixados por todos e
+ninguém os altera pelo app; as fichas são modelos, copiados para cada usuário no primeiro login
+(mudar uma ficha modelo depois não altera as cópias que já existem).
 """
 
 import sys
@@ -21,7 +24,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlmodel import Session, col, select
 
-from backend.models import ComVersao, Exercicio, Ficha, FichaExercicio
+from backend.models import MAX_ALTERNATIVAS, ComVersao, Exercicio, Ficha, FichaExercicio
 from backend.sync import proxima_versao
 
 ARQUIVO_PADRAO = Path(__file__).parent / "data" / "treino.toml"
@@ -44,15 +47,19 @@ class ExercicioSeed(_Estrito):
     slug: str = Field(min_length=1)
     nome: str = Field(min_length=1, max_length=120)
     grupo_muscular: str = Field(min_length=1, max_length=60)
-    substituto: str | None = None
     imagens: list[str] = []
     instrucoes: list[str] = []
+    midia_url: str | None = Field(default=None, max_length=500)
 
 
 class ItemSeed(_Estrito):
     exercicio: str
     series: int = Field(ge=1, le=20)
-    repeticoes: str = Field(min_length=1, max_length=30)
+    alvo_reps: int = Field(ge=1, le=100)
+    aquecimento: bool = False
+    grupo_biset: int | None = Field(default=None, ge=1, le=100)
+    # Plano B: slugs de até 2 exercícios, em ordem de preferência.
+    alternativas: list[str] = Field(default=[], max_length=MAX_ALTERNATIVAS)
     observacao: str | None = Field(default=None, max_length=300)
 
 
@@ -75,21 +82,20 @@ class Catalogo(_Estrito):
         if len({f.slug for f in self.fichas}) != len(self.fichas):
             raise ValueError("slug de ficha repetido")
         conhecidos = set(slugs)
-        for exercicio in self.exercicios:
-            if exercicio.substituto is not None:
-                if exercicio.substituto not in conhecidos:
-                    raise ValueError(
-                        f"substituto '{exercicio.substituto}' de '{exercicio.slug}' não existe"
-                    )
-                if exercicio.substituto == exercicio.slug:
-                    raise ValueError(f"'{exercicio.slug}' não pode ser substituto de si mesmo")
         for ficha in self.fichas:
             usados = [item.exercicio for item in ficha.exercicios]
             if len(usados) != len(set(usados)):
                 raise ValueError(f"exercício repetido na ficha '{ficha.slug}'")
-            for slug in usados:
-                if slug not in conhecidos:
-                    raise ValueError(f"exercício '{slug}' da ficha '{ficha.slug}' não existe")
+            for item in ficha.exercicios:
+                for slug in (item.exercicio, *item.alternativas):
+                    if slug not in conhecidos:
+                        raise ValueError(f"exercício '{slug}' da ficha '{ficha.slug}' não existe")
+                if len(set(item.alternativas)) != len(item.alternativas):
+                    raise ValueError(f"alternativa repetida em '{item.exercicio}' ({ficha.slug})")
+                if item.exercicio in item.alternativas:
+                    raise ValueError(
+                        f"'{item.exercicio}' não pode ser alternativa de si mesmo ({ficha.slug})"
+                    )
         return self
 
 
@@ -137,30 +143,30 @@ def carregar_catalogo(session: Session, catalogo: Catalogo) -> int:
     """Grava o catálogo e devolve quantos registros foram criados ou alterados."""
     g = _Gravador(session)
 
-    # 1ª passada sem o substituto (ele pode ser um exercício que ainda não existe no banco).
+    # `usuario_id` nulo em tudo: é catálogo, mesmo que alguém tenha usado o mesmo id antes.
     for e in catalogo.exercicios:
-        existente = session.get(Exercicio, id_de("exercicio", e.slug))
-        substituto_atual = existente.substituto_id if existente else None
         g.gravar(
             Exercicio,
             id_de("exercicio", e.slug),
             {
+                "usuario_id": None,
                 "nome": e.nome,
                 "grupo_muscular": e.grupo_muscular,
                 "imagens": e.imagens,
                 "instrucoes": e.instrucoes,
-                "substituto_id": substituto_atual,
+                "midia_url": e.midia_url,
                 "excluido": False,
             },
         )
     session.flush()
-    for e in catalogo.exercicios:
-        substituto = id_de("exercicio", e.substituto) if e.substituto else None
-        g.gravar(Exercicio, id_de("exercicio", e.slug), {"substituto_id": substituto})
 
     for f in catalogo.fichas:
         ficha_id = id_de("ficha", f.slug)
-        g.gravar(Ficha, ficha_id, {"nome": f.nome, "ordem": f.ordem, "excluido": False})
+        g.gravar(
+            Ficha,
+            ficha_id,
+            {"usuario_id": None, "nome": f.nome, "ordem": f.ordem, "excluido": False},
+        )
         session.flush()
 
         ids_no_arquivo = set()
@@ -171,11 +177,15 @@ def carregar_catalogo(session: Session, catalogo: Catalogo) -> int:
                 FichaExercicio,
                 item_id,
                 {
+                    "usuario_id": None,
                     "ficha_id": ficha_id,
                     "exercicio_id": id_de("exercicio", item.exercicio),
                     "ordem": ordem,
                     "series": item.series,
-                    "repeticoes": item.repeticoes,
+                    "alvo_reps": item.alvo_reps,
+                    "aquecimento": item.aquecimento,
+                    "grupo_biset": item.grupo_biset,
+                    "alternativas": [id_de("exercicio", slug) for slug in item.alternativas],
                     "observacao": item.observacao,
                     "excluido": False,
                 },
@@ -210,7 +220,7 @@ def main(argv: list[str], abrir_sessao: Callable[[], Session] | None = None) -> 
     with abrir_sessao() as session:
         alterados = carregar_catalogo(session, catalogo)
     print(
-        f"{len(catalogo.exercicios)} exercícios e {len(catalogo.fichas)} fichas no arquivo; "
+        f"{len(catalogo.exercicios)} exercícios e {len(catalogo.fichas)} fichas modelo no arquivo; "
         f"{alterados} registros criados/alterados."
     )
     return 0

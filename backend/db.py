@@ -1,16 +1,17 @@
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Annotated, Any
 
 from fastapi import Depends
-from sqlalchemy import DateTime, event
+from sqlalchemy import JSON, DateTime, event
 from sqlalchemy.engine import Dialect, Engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Session, create_engine
 
-from backend.config import get_settings
+from backend.config import DatabaseSettings
 
 
 class UTCDateTime(TypeDecorator[datetime]):
@@ -35,6 +36,23 @@ class UTCDateTime(TypeDecorator[datetime]):
         return value.replace(tzinfo=UTC)
 
 
+class ListaUUID(TypeDecorator[list[uuid.UUID]]):
+    """Lista de UUIDs guardada como JSON (texto), devolvida sempre como `uuid.UUID`."""
+
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: list[uuid.UUID] | None, dialect: Dialect
+    ) -> list[str] | None:
+        if value is None:
+            return None
+        return [str(item) for item in value]
+
+    def process_result_value(self, value: list[str] | None, dialect: Dialect) -> list[uuid.UUID]:
+        return [uuid.UUID(item) for item in value or []]
+
+
 def criar_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
         kwargs: dict[str, Any] = {"connect_args": {"check_same_thread": False}}
@@ -55,7 +73,8 @@ def criar_engine(url: str) -> Engine:
 
 @lru_cache
 def get_engine() -> Engine:
-    return criar_engine(get_settings().sqlalchemy_url)
+    # Só precisa do banco: o seed e os scripts locais rodam sem as chaves do login.
+    return criar_engine(DatabaseSettings().sqlalchemy_url)
 
 
 def get_session() -> Iterator[Session]:

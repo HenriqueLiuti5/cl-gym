@@ -1,12 +1,22 @@
-# Catálogo de treino do CL Gym.
+# Catálogo de treino do CL Gym: exercícios compartilhados e fichas modelo.
 #
 # Depois de editar, carregue no banco com:  uv run python -m backend.seed
+#
+# - Os exercícios daqui são do catálogo: todo mundo baixa e ninguém altera pelo app.
+# - As fichas daqui são modelos: cada pessoa recebe uma cópia no primeiro login e depois edita a
+#   sua. Mudar uma ficha modelo não altera as cópias que já existem.
 #
 # Regras:
 # - `slug` é o identificador fixo (minúsculas e hífens). Não mude o slug de algo que já está
 #   em uso: o histórico de cargas está ligado a ele. Para renomear, mude só o `nome`.
-# - `substituto` é o slug de outro exercício que trabalha exatamente o mesmo músculo.
 # - A ordem dos exercícios dentro da ficha é a ordem em que aparecem aqui.
+# - `alvo_reps` é um número só (nunca faixa): mesmo peso em todas as séries, parando a 1–2 reps
+#   da falha.
+# - `aquecimento = true` mostra "1×10 leve (~50% do peso)" antes (normalmente só no primeiro).
+# - Itens com o mesmo `grupo_biset` são feitos em sequência, descansando só depois do par.
+# - `alternativas` (Plano B): slugs de até 2 exercícios, em ordem de preferência.
+# - Nada pessoal aqui (o repositório é público): só nomes, séries, alvo, aquecimento, bi-set,
+#   Plano B e dicas de execução.
 #
 # Exemplo de exercício:
 #
@@ -14,14 +24,20 @@
 # slug = "supino-reto-barra"
 # nome = "Supino reto com barra"
 # grupo_muscular = "Peito"
-# substituto = "supino-reto-maquina"
 # imagens = []        # URLs das imagens de demonstração
 # instrucoes = []     # passos da execução, em português
+# midia_url = ""      # opcional: link de GIF/vídeo de demonstração
 #
 # E dentro da ficha:
 #   exercicios = [
-#     { exercicio = "supino-reto-barra", series = 4, repeticoes = "8-10" },
+#     { exercicio = "supino-reto-barra", series = 3, alvo_reps = 8, aquecimento = true,
+#       alternativas = ["supino-reto-maquina", "supino-reto-halter"],
+#       observacao = "Escápulas presas no banco" },
+#     { exercicio = "crucifixo-maquina", series = 3, alvo_reps = 12, grupo_biset = 1 },
+#     { exercicio = "triceps-corda", series = 3, alvo_reps = 12, grupo_biset = 1 },
 #   ]
+#
+# As fichas modelo de verdade (treino v2: Push, Pull, Leg day e Upper) entram na etapa 3.
 
 [[fichas]]
 slug = "peito-triceps"

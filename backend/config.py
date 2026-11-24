@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
-    """Só o banco — usado também pelas migrações, que não precisam do token."""
+    """Só o banco — usado também pelas migrações e pelo seed, que não precisam do login."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -24,10 +24,24 @@ class DatabaseSettings(BaseSettings):
 class Settings(DatabaseSettings):
     """Configuração lida de variáveis de ambiente (ou do arquivo .env em desenvolvimento)."""
 
-    # Token único que o app envia em `Authorization: Bearer <token>`.
-    app_token: str = Field(min_length=16)
+    # ID do cliente OAuth "Aplicativo da Web" do Google Cloud (o `aud` do ID token).
+    google_client_id: str = Field(min_length=1)
+    # Chave que assina os tokens de sessão do app. Trocar desloga todo mundo.
+    sessao_secret: str = Field(min_length=32)
+    # Convites: e-mails separados por vírgula. Tirar um e-mail daqui bloqueia o acesso.
+    emails_permitidos: str = ""
+    sessao_dias: int = Field(default=90, ge=1, le=365)
+
+    @property
+    def emails(self) -> frozenset[str]:
+        return frozenset(
+            email.strip().lower() for email in self.emails_permitidos.split(",") if email.strip()
+        )
+
+    def email_permitido(self, email: str) -> bool:
+        return email.strip().lower() in self.emails
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]  # app_token vem do ambiente
+    return Settings()  # type: ignore[call-arg]  # as chaves vêm do ambiente

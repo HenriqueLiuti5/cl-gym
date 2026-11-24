@@ -1,16 +1,18 @@
 from fastapi import FastAPI
 
-from backend.routers import sync
+from backend.routers import auth, conta, sync
 
 app = FastAPI(
     title="CL Gym API",
-    version="0.1.0",
+    version="0.2.0",
     description="Backend do CL Gym: guarda e sincroniza treinos, cargas e exercícios.",
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
 )
 
+app.include_router(auth.router)
+app.include_router(conta.router)
 app.include_router(sync.router)
 
 
