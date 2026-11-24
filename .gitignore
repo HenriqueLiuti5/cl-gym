@@ -13,6 +13,7 @@ __pycache__/
 # Frontend
 node_modules/
 frontend/dist/
+frontend/dev-dist/
 
 # Vercel
 .vercel/
