@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic import Field
@@ -31,6 +32,17 @@ class Settings(DatabaseSettings):
     # Convites: e-mails separados por vírgula. Tirar um e-mail daqui bloqueia o acesso.
     emails_permitidos: str = ""
     sessao_dias: int = Field(default=90, ge=1, le=365)
+    # Login sem Google, só para desenvolvimento local (veja `login_dev_ativo`).
+    login_dev: bool = False
+
+    @property
+    def login_dev_ativo(self) -> bool:
+        """Nunca funciona em produção: exige LOGIN_DEV, banco SQLite e não estar na Vercel."""
+        return (
+            self.login_dev
+            and self.database_url.startswith("sqlite")
+            and not os.environ.get("VERCEL")
+        )
 
     @property
     def emails(self) -> frozenset[str]:

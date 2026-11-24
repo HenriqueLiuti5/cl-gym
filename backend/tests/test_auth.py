@@ -267,3 +267,46 @@ def test_segundo_login_nao_copia_de_novo(
     entrar()
     token = entrar()
     assert len(anonimo.get("/api/sync", headers=com_token(token)).json()["fichas"]) == 1
+
+
+# --- Login de desenvolvimento ---------------------------------------------------------------
+
+
+def _com_login_dev(database_url: str = "sqlite://") -> None:
+    from backend.config import get_settings
+
+    config = configuracao().model_copy(update={"login_dev": True, "database_url": database_url})
+    app.dependency_overrides[get_settings] = lambda: config
+
+
+def test_login_dev_desligado_por_padrao(anonimo: TestClient) -> None:
+    assert anonimo.get("/api/auth/config").json() == {
+        "google_client_id": CLIENT_ID,
+        "login_dev": False,
+    }
+    assert anonimo.post("/api/auth/dev", json={"email": EMAIL_A}).status_code == 404
+
+
+def test_login_dev_local(anonimo: TestClient) -> None:
+    _com_login_dev()
+    assert anonimo.get("/api/auth/config").json()["login_dev"] is True
+    resposta = anonimo.post("/api/auth/dev", json={"email": EMAIL_A, "nome": "Ana"})
+    assert resposta.status_code == 200
+    token = resposta.json()["token"]
+    assert anonimo.get("/api/sync", headers=com_token(token)).status_code == 200
+    # Continua exigindo convite.
+    assert anonimo.post("/api/auth/dev", json={"email": "x@exemplo.com"}).status_code == 403
+
+
+def test_login_dev_nunca_funciona_na_vercel(
+    anonimo: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _com_login_dev()
+    monkeypatch.setenv("VERCEL", "1")
+    assert anonimo.get("/api/auth/config").json()["login_dev"] is False
+    assert anonimo.post("/api/auth/dev", json={"email": EMAIL_A}).status_code == 404
+
+
+def test_login_dev_nunca_funciona_com_postgres(anonimo: TestClient) -> None:
+    _com_login_dev("postgresql://usuario:senha@exemplo.neon.tech/neondb")
+    assert anonimo.post("/api/auth/dev", json={"email": EMAIL_A}).status_code == 404
