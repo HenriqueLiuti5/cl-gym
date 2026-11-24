@@ -100,7 +100,7 @@ frontend/
   public/                      ícones
   src/main.tsx, App.tsx        entrada, rotas por hash (#/treino/<id>) e abas de baixo
   src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
-  src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor
+  src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor; gatilhos automáticos
   src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set, gráficos
   src/lib/perfil.ts            perfil (primeiro acesso e Conta): limites, altura, peso atual
   src/lib/ids.ts               UUID v4 e v5 (id do registro do dia), sem depender de https
@@ -130,8 +130,15 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
   guarda o cursor. Se `desde` for maior que o cursor do servidor (banco recriado), volta tudo.
 - Ciclo do app: enviar pendentes → baixar desde o último cursor → salvar o cursor. No download,
   uma mudança local ainda pendente e mais nova que a do servidor é mantida.
-- **Quando sincroniza:** ao abrir o app, ao terminar um treino, quando a internet volta (evento
-  `online`) e no botão "Sincronizar agora" da tela Conta. Nunca em intervalo fixo.
+- **Quando sincroniza (automático):** ao abrir o app e ao voltar para ele depois de 5 min ou mais
+  em segundo plano; uns 2 s depois de salvar algo fora do treino (registro do dia, perfil, ajuste
+  da ficha, cancelar treino), juntando mudanças seguidas (`sincronizarEmBreve`); ao terminar um
+  treino; quando a internet volta (evento `online`); e no botão "Sincronizar" da tela Conta. As
+  séries do treino em andamento não disparam sincronização: vão juntas no fim. Se o app for para
+  segundo plano com uma sincronização agendada, ela sai na hora. Nunca em intervalo fixo. Uma
+  chamada no meio de outra sincronização roda de novo no fim, para levar o que mudou.
+- **Sem internet** (`navigator.onLine` falso) o app nem tenta e não mostra aviso: tudo fica no
+  celular até a próxima vez. A faixa no topo só aparece em erro de verdade.
 - Erro 5xx ou falta de rede contam como "sem internet": tudo fica no celular. 401 pede login de
   novo sem apagar os dados locais. O app valida os mesmos limites do servidor (ex.: carga até
   1000 kg), porque um registro recusado (422) travaria os envios seguintes.
@@ -276,8 +283,9 @@ mudar à vontade (nova migração, sem migrar dados).
   "Externo" e publicada em produção só com `openid`, `email` e `profile` (não exige verificação).
 - **Sem loja de apps** (Play Store custa US$ 25 e App Store US$ 99/ano): é PWA. Sem domínio
   próprio: `cl-gym.vercel.app`.
-- **Economia de processamento:** sincronizar ao abrir o app, ao terminar um treino e quando a
-  internet voltar. Nada de sincronizar em intervalos fixos.
+- **Economia de processamento:** sincronizar só nos momentos de "Quando sincroniza" (abrir ou
+  voltar ao app, logo depois de salvar fora do treino, fim do treino, internet de volta). As
+  séries não sincronizam uma a uma. Nada de sincronizar em intervalos fixos.
 - Nenhuma API paga (de comida, IA etc.).
 
 ### Instalação nos celulares

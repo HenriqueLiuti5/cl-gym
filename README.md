@@ -51,8 +51,10 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
   plus the new cursor. The server reads the cursor *before* the records, so an upload still in
   progress is never skipped; it simply arrives in the next download. If the client's cursor is
   ahead of the server's (a recreated database), it gets everything again.
-- **When.** On app open, when a workout ends and when the connection comes back. Never on a timer,
-  to stay within free-tier limits.
+- **When.** On app open (or on returning to it after five minutes away), a couple of seconds after
+  saving anything outside a workout, when a workout ends and when the connection comes back. Sets
+  logged during a workout go up together at the end. Never on a timer, to stay within free-tier
+  limits, and with no connection the app does not even try.
 - **Auth.** `POST /api/auth/google` verifies the Google ID token (signature, audience,
   `email_verified`) against the invite list and returns a long-lived session token signed by the
   server, so the app keeps working after days offline. Every route except `/api/health` requires

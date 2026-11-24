@@ -1,7 +1,7 @@
 import { agora, db, salvar } from "./db";
 import { novoId } from "./ids";
 import { ir } from "./rota";
-import { sincronizar } from "./sync";
+import { sincronizar, sincronizarEmBreve } from "./sync";
 import type { Serie, Sessao } from "./tipos";
 
 export async function comecarTreino(fichaId: string | null): Promise<void> {
@@ -32,6 +32,7 @@ export async function cancelarTreino(sessao: Sessao): Promise<void> {
     await salvar("sessoes", { ...sessao, excluido: true });
   });
   ir("/");
+  sincronizarEmBreve();
 }
 
 export async function gravarSerie(serie: Omit<Serie, "atualizado_em" | "excluido" | "id"> & { id?: string }) {

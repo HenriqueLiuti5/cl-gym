@@ -41,14 +41,15 @@ function Metas({ usuario }: { usuario: Usuario }) {
   return (
     <Cartao className="space-y-3">
       <h2 className="font-semibold">Metas</h2>
-      <div className="grid grid-cols-3 gap-2">
+      {/* items-end: se um rótulo quebrar em duas linhas (celular estreito), as caixas seguem alinhadas. */}
+      <div className="grid grid-cols-3 items-end gap-2">
         <Campo rotulo="kcal/dia">
           <input className={estiloEntrada} inputMode="numeric" value={kcal} onChange={(e) => setKcal(e.target.value)} />
         </Campo>
         <Campo rotulo="Proteína (g)">
           <input className={estiloEntrada} inputMode="decimal" value={proteina} onChange={(e) => setProteina(e.target.value)} />
         </Campo>
-        <Campo rotulo="Peso (kg)">
+        <Campo rotulo="Peso alvo (kg)">
           <input className={estiloEntrada} inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
         </Campo>
       </div>
@@ -90,7 +91,8 @@ function Sincronizar() {
       {ajuda && (
         <p className="rounded-xl bg-slate-900 px-3 py-2 text-xs leading-relaxed text-slate-400">
           Envia para a nuvem o que você registrou neste aparelho e baixa o que mudou nos outros. Isso já acontece
-          sozinho ao abrir o app, ao terminar um treino e quando a internet volta; o botão é para forçar agora.
+          sozinho ao abrir o app, logo depois de salvar, ao terminar um treino e quando a internet volta (sem
+          internet, fica tudo no aparelho até lá); o botão é para forçar agora.
           <span className="mt-1 block text-slate-500">
             {ultima && `Última vez: ${ultima}. `}
             {pendentes ? `${alteracoes(pendentes)} esperando para enviar.` : "Nada pendente."}

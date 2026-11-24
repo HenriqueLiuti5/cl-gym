@@ -5,7 +5,7 @@ import { lerToken } from "./lib/api";
 import { db } from "./lib/db";
 import { perfilIncompleto } from "./lib/perfil";
 import { useRota } from "./lib/rota";
-import { sincronizar, sincronizarQuandoVoltarInternet, type EstadoSync } from "./lib/sync";
+import { ligarSincronizacaoAutomatica, sincronizar, type EstadoSync } from "./lib/sync";
 import type { Usuario } from "./lib/tipos";
 import { BoasVindas } from "./telas/BoasVindas";
 import { Conta } from "./telas/Conta";
@@ -47,10 +47,8 @@ function Navegacao({ atual }: { atual: string }) {
   );
 }
 
+/** Só aparece em erro de verdade. Sem internet não avisa: tudo fica no celular e vai depois. */
 function FaixaSync({ estado }: { estado?: EstadoSync }) {
-  if (estado?.situacao === "offline") {
-    return <p className="mb-3 rounded-xl bg-slate-800 px-3 py-2 text-center text-xs text-slate-300">{estado.mensagem ?? "Sem internet: tudo fica salvo no celular."}</p>;
-  }
   if (estado?.situacao === "erro") {
     return <p className="mb-3 rounded-xl bg-amber-950 px-3 py-2 text-center text-xs text-amber-300">Não deu para sincronizar: {estado.mensagem}</p>;
   }
@@ -68,7 +66,7 @@ export function App() {
   useEffect(() => {
     if (!logado) return;
     void sincronizar(); // ao abrir o app
-    return sincronizarQuandoVoltarInternet();
+    return ligarSincronizacaoAutomatica();
   }, [logado]);
 
   if (!meta) return null;

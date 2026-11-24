@@ -6,6 +6,7 @@ import { formatarData } from "../lib/formato";
 import { idRegistroDiario } from "../lib/ids";
 import { lerPerfil, pesoAtual, type CamposPerfil, type DadosPerfil } from "../lib/perfil";
 import { dataLocal } from "../lib/regras";
+import { sincronizarEmBreve } from "../lib/sync";
 import type { RegistroDiario, Usuario } from "../lib/tipos";
 import { Aviso, Botao, Campo, estiloEntrada } from "./ui";
 
@@ -26,6 +27,7 @@ async function salvarPerfil(usuario: Usuario, dados: DadosPerfil, pesoAnterior: 
       excluido: false,
       peso_kg: dados.peso_kg,
     });
+    sincronizarEmBreve();
   }
   const { nome, altura_cm, idade } = dados;
   if (nome !== usuario.nome || altura_cm !== usuario.altura_cm || idade !== usuario.idade) {

@@ -6,6 +6,7 @@ import { formatarData, formatarKg, lerNumero } from "../lib/formato";
 import { agora, db, salvar } from "../lib/db";
 import { idRegistroDiario } from "../lib/ids";
 import { dataLocal } from "../lib/regras";
+import { sincronizarEmBreve } from "../lib/sync";
 import type { RegistroDiario, Usuario } from "../lib/tipos";
 
 function Formulario({ usuario, data, registro }: { usuario: Usuario; data: string; registro?: RegistroDiario }) {
@@ -35,6 +36,7 @@ function Formulario({ usuario, data, registro }: { usuario: Usuario; data: strin
       proteina_g: valores.proteina,
       observacao: observacao.trim() || null,
     });
+    sincronizarEmBreve();
     setSalvo(true);
   }
 

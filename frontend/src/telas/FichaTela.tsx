@@ -4,6 +4,7 @@ import { Demonstracao } from "../componentes/Demonstracao";
 import { Botao, Cartao, Titulo } from "../componentes/ui";
 import { db, salvar } from "../lib/db";
 import { blocos } from "../lib/regras";
+import { sincronizarEmBreve } from "../lib/sync";
 import { comecarTreino } from "../lib/treino";
 import type { FichaExercicio } from "../lib/tipos";
 
@@ -36,8 +37,10 @@ export function FichaTela({ fichaId }: { fichaId: string }) {
 
   const porId = new Map(exercicios.map((e) => [e.id, e]));
   const nome = (id: string) => porId.get(id)?.nome ?? "Exercício";
-  const alterar = (item: FichaExercicio, campos: Partial<FichaExercicio>) =>
-    salvar("ficha_exercicios", { ...item, ...campos });
+  const alterar = async (item: FichaExercicio, campos: Partial<FichaExercicio>) => {
+    await salvar("ficha_exercicios", { ...item, ...campos });
+    sincronizarEmBreve();
+  };
 
   return (
     <div className="space-y-3">
