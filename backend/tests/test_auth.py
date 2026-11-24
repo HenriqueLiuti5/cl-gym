@@ -49,7 +49,7 @@ def test_segundo_login_acha_o_mesmo_usuario(
     anonimo: TestClient, id_token_google: GerarIdToken
 ) -> None:
     primeiro = anonimo.post("/api/auth/google", json={"id_token": id_token_google()}).json()
-    # O e-mail e o nome podem mudar na conta Google; o `sub` é o que identifica.
+    # O e-mail pode mudar na conta Google; o `sub` é o que identifica.
     segundo = anonimo.post(
         "/api/auth/google",
         json={"id_token": id_token_google(email=EMAIL_A.upper(), name="Ana Maria")},
@@ -57,7 +57,17 @@ def test_segundo_login_acha_o_mesmo_usuario(
     assert segundo["novo"] is False
     assert segundo["usuario"]["id"] == primeiro["usuario"]["id"]
     assert segundo["usuario"]["email"] == EMAIL_A  # guardado em minúsculas
-    assert segundo["usuario"]["nome"] == "Ana Maria"
+    # O nome já existia: fica o da conta (que a pessoa pode ter mudado no app).
+    assert segundo["usuario"]["nome"] == "Ana"
+
+
+def test_login_preenche_o_nome_que_faltava(
+    anonimo: TestClient, id_token_google: GerarIdToken
+) -> None:
+    sem_nome = anonimo.post("/api/auth/google", json={"id_token": id_token_google(name=None)})
+    assert sem_nome.json()["usuario"]["nome"] is None
+    com_nome = anonimo.post("/api/auth/google", json={"id_token": id_token_google(name="Ana")})
+    assert com_nome.json()["usuario"]["nome"] == "Ana"
 
 
 def test_email_nao_convidado_e_recusado(anonimo: TestClient, id_token_google: GerarIdToken) -> None:
@@ -145,7 +155,7 @@ def test_sync_sem_token_e_recusado(anonimo: TestClient) -> None:
     assert anonimo.get("/api/sync").status_code == 401
 
 
-@pytest.mark.parametrize("rota", ["/api/sync", "/api/conta", "/api/conta/exportar"])
+@pytest.mark.parametrize("rota", ["/api/sync", "/api/conta"])
 def test_rotas_exigem_token(anonimo: TestClient, rota: str) -> None:
     assert anonimo.get(rota, headers=com_token("token-errado")).status_code == 401
 

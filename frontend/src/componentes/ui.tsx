@@ -1,23 +1,30 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
-type Variante = "principal" | "secundario" | "perigo" | "fantasma";
+type Variante = "principal" | "secundario" | "perigo" | "perigoLeve" | "fantasma";
 
 const VARIANTES: Record<Variante, string> = {
   principal: "bg-emerald-500 text-slate-950 active:bg-emerald-400 font-semibold",
   secundario: "bg-slate-800 text-slate-100 active:bg-slate-700",
   perigo: "bg-rose-600 text-white active:bg-rose-500 font-semibold",
+  perigoLeve: "border border-rose-900 text-rose-300 active:bg-rose-950",
   fantasma: "text-slate-300 active:bg-slate-800",
+};
+
+const TAMANHOS = {
+  normal: "rounded-xl px-4 py-3 text-base",
+  pequeno: "rounded-lg px-3 py-1.5 text-sm",
 };
 
 export function Botao({
   variante = "secundario",
+  tamanho = "normal",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; tamanho?: keyof typeof TAMANHOS }) {
   return (
     <button
       type="button"
-      className={`rounded-xl px-4 py-3 text-base disabled:opacity-40 ${VARIANTES[variante]} ${className}`}
+      className={`${TAMANHOS[tamanho]} disabled:opacity-40 ${VARIANTES[variante]} ${className}`}
       {...props}
     />
   );
@@ -68,4 +75,33 @@ export function Aviso({ tipo, children }: { tipo: "info" | "bom" | "ruim"; child
     ruim: "bg-amber-950 text-amber-300",
   };
   return <p className={`rounded-xl px-3 py-2 text-sm ${cores[tipo]}`}>{children}</p>;
+}
+
+/** Janela por cima da tela. Abre ao aparecer; fecha no Esc, ao tocar fora ou por `fechar`. */
+export function Modal({ titulo, fechar, children }: { titulo: string; fechar: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const idTitulo = useId();
+
+  useEffect(() => {
+    const dialogo = ref.current;
+    if (dialogo && !dialogo.open) dialogo.showModal();
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={idTitulo}
+      onClose={fechar}
+      // Fora da caixa, o toque cai no próprio <dialog> (o fundo escuro).
+      onClick={(e) => e.target === e.currentTarget && fechar()}
+      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-0 text-slate-100 backdrop:bg-black/70"
+    >
+      <div className="space-y-4 p-5">
+        <h2 id={idTitulo} className="text-lg font-semibold">
+          {titulo}
+        </h2>
+        {children}
+      </div>
+    </dialog>
+  );
 }

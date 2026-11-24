@@ -1,6 +1,7 @@
 import uuid
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func
 from sqlmodel import Session, col, select
@@ -16,7 +17,7 @@ from backend.models import (
 )
 from backend.seed import id_de
 from backend.tests.conftest import EMAIL_A, Entrar
-from backend.tests.dados import T0, TABELAS, exercicio, iso, novo_id, treino_completo
+from backend.tests.dados import T0, TABELAS, iso, treino_completo
 from backend.tests.test_auth import com_token
 from backend.tests.test_isolamento import carregar_catalogo_simples
 
@@ -32,22 +33,22 @@ def registros_do_usuario(session: Session, usuario_id: uuid.UUID) -> int:
     return total
 
 
-# --- Metas ----------------------------------------------------------------------------------
+# --- Perfil e metas -------------------------------------------------------------------------
 
 
-def test_conta_comeca_sem_metas(client: TestClient) -> None:
+def test_conta_comeca_sem_altura_idade_e_metas(client: TestClient) -> None:
     conta = client.get("/api/conta").json()
     assert conta["email"] == EMAIL_A
-    assert (conta["meta_kcal"], conta["meta_proteina_g"], conta["meta_peso_kg"]) == (
-        None,
-        None,
-        None,
-    )
+    assert conta["nome"] == "Ana"  # veio do Google
+    campos = ("altura_cm", "idade", "meta_kcal", "meta_proteina_g", "meta_peso_kg")
+    assert all(conta[campo] is None for campo in campos)
 
 
-def test_altera_so_as_metas_enviadas(client: TestClient) -> None:
+def test_altera_so_os_campos_enviados(client: TestClient) -> None:
     client.patch("/api/conta", json={"meta_kcal": 2200, "meta_peso_kg": 78.5})
+    client.patch("/api/conta", json={"nome": "Aninha", "altura_cm": 165, "idade": 29})
     conta = client.patch("/api/conta", json={"meta_proteina_g": 160}).json()
+    assert (conta["nome"], conta["altura_cm"], conta["idade"]) == ("Aninha", 165, 29)
     assert (conta["meta_kcal"], conta["meta_proteina_g"], conta["meta_peso_kg"]) == (
         2200,
         160,
@@ -56,46 +57,36 @@ def test_altera_so_as_metas_enviadas(client: TestClient) -> None:
     assert client.patch("/api/conta", json={"meta_kcal": None}).json()["meta_kcal"] is None
 
 
-def test_meta_invalida_e_recusada(client: TestClient) -> None:
-    assert client.patch("/api/conta", json={"meta_peso_kg": -1}).status_code == 422
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"meta_peso_kg": -1},
+        {"altura_cm": 49},
+        {"altura_cm": 251},
+        {"altura_cm": 1.75},  # em metros: o app converte para cm antes de enviar
+        {"idade": 9},
+        {"idade": 121},
+        {"nome": ""},
+        {"nome": "x" * 201},
+    ],
+)
+def test_perfil_invalido_e_recusado(client: TestClient, corpo: dict[str, object]) -> None:
+    assert client.patch("/api/conta", json=corpo).status_code == 422
 
 
-def test_metas_sao_de_cada_um(client: TestClient, client_b: TestClient) -> None:
-    client.patch("/api/conta", json={"meta_kcal": 2200})
-    assert client_b.get("/api/conta").json()["meta_kcal"] is None
+def test_perfil_e_metas_sao_de_cada_um(client: TestClient, client_b: TestClient) -> None:
+    client.patch("/api/conta", json={"meta_kcal": 2200, "altura_cm": 180, "idade": 30})
+    conta_b = client_b.get("/api/conta").json()
+    assert (conta_b["meta_kcal"], conta_b["altura_cm"], conta_b["idade"]) == (None, None, None)
 
 
-# --- Exportar -------------------------------------------------------------------------------
-
-
-def test_exporta_tudo_do_usuario(
-    session: Session, client: TestClient, client_b: TestClient
+def test_nome_escolhido_no_app_fica_depois_de_entrar_de_novo(
+    entrar: Entrar, anonimo: TestClient
 ) -> None:
-    agachamento = carregar_catalogo_simples(session)
-    corpo, ids = treino_completo()
-    client.post("/api/sync", json=corpo)
-    # Excluído no app também vai para a exportação.
-    apagado = novo_id()
-    client.post("/api/sync", json={"exercicios": [exercicio(apagado, excluido=True)]})
-    client_b.post("/api/sync", json=treino_completo()[0])
-
-    resposta = client.get("/api/conta/exportar")
-    assert resposta.status_code == 200
-    assert "attachment" in resposta.headers["content-disposition"]
-    dados = resposta.json()
-    assert dados["usuario"]["email"] == EMAIL_A
-    assert "exportado_em" in dados
-    for tabela in TABELAS:
-        if tabela != "exercicios":
-            assert len(dados[tabela]) == 1, tabela
-    assert {e["id"] for e in dados["exercicios"]} == {ids["ex"], apagado, agachamento}
-    assert dados["series"][0]["carga_kg"] == 32.5
-
-
-def test_exportar_nao_traz_nada_do_outro(client: TestClient, client_b: TestClient) -> None:
-    client.post("/api/sync", json=treino_completo()[0])
-    dados = client_b.get("/api/conta/exportar").json()
-    assert all(dados[t] == [] for t in TABELAS)
+    token = entrar()
+    anonimo.patch("/api/conta", headers=com_token(token), json={"nome": "Aninha"})
+    entrar(name="Ana Maria")
+    assert anonimo.get("/api/conta", headers=com_token(token)).json()["nome"] == "Aninha"
 
 
 # --- Apagar ---------------------------------------------------------------------------------

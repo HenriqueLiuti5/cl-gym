@@ -1,12 +1,13 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import { lerToken } from "./lib/api";
 import { db } from "./lib/db";
+import { perfilIncompleto } from "./lib/perfil";
 import { useRota } from "./lib/rota";
 import { sincronizar, sincronizarQuandoVoltarInternet, type EstadoSync } from "./lib/sync";
 import type { Usuario } from "./lib/tipos";
-import { ComoInstalar } from "./telas/ComoInstalar";
+import { BoasVindas } from "./telas/BoasVindas";
 import { Conta } from "./telas/Conta";
 import { Dia } from "./telas/Dia";
 import { FichaTela } from "./telas/FichaTela";
@@ -61,6 +62,8 @@ export function App() {
   const meta = useLiveQuery(async () => new Map((await db.meta.toArray()).map((m) => [m.chave, m.valor])), []);
   const usuario = meta?.get("usuario") as Usuario | undefined;
   const logado = Boolean(usuario && lerToken());
+  // Quem escolheu "Preencher depois" (sem internet) no primeiro acesso, até fechar o app.
+  const [perfilDepois, setPerfilDepois] = useState<string | null>(null);
 
   useEffect(() => {
     if (!logado) return;
@@ -71,15 +74,10 @@ export function App() {
   if (!meta) return null;
   const [tela, parametro] = rota;
 
-  if (tela === "instalar") {
-    return (
-      <main className="mx-auto max-w-md px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-24">
-        <ComoInstalar voltar={logado ? "#/conta" : "#/"} />
-        {logado && <Navegacao atual="conta" />}
-      </main>
-    );
-  }
   if (!logado || !usuario) return <Login expirou={meta.get("sessao_expirada") === true} />;
+  if (perfilIncompleto(usuario) && perfilDepois !== usuario.id) {
+    return <BoasVindas usuario={usuario} depois={() => setPerfilDepois(usuario.id)} />;
+  }
 
   let conteudo;
   if (tela === "ficha" && parametro) conteudo = <FichaTela fichaId={parametro} />;

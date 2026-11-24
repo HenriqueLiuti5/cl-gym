@@ -34,7 +34,10 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
 - **Suggestion of the day:** the plan done longest ago, since workouts do not follow weekdays.
 - **Daily log:** fasting weight, calories, protein and a note. Charts show load progression per
   exercise, a 7-day weight average and weekly calories and protein against personal goals.
-- **Account:** export everything as JSON, or delete the account for real.
+- **Profile and account:** the first sign-in asks for name, current weight, height and age (the
+  weight goes into the daily log, so the weight chart starts right away). All of it, plus the
+  goals, can be changed later, and deleting the account erases everything for real behind a
+  typed confirmation.
 
 ## Sync protocol
 
@@ -100,7 +103,7 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 
 ## Status
 
-- [x] Multi-user backend: Google sign-in, invites, per-user sync, export and delete account
+- [x] Multi-user backend: Google sign-in, invites, per-user sync, profile and account deletion
 - [x] Training model: rep targets, warm-up, supersets, Plan B, daily log and goals
 - [x] Template plans and exercise images (public-domain
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db))

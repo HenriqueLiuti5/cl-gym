@@ -84,11 +84,11 @@ backend/
   config.py             Settings (banco, Google, sessão, convites)
   db.py                 engine, sessão, tipos UTCDateTime e ListaUUID
   auth.py               verificação do ID token do Google, token de sessão, usuário atual
-  conta.py              primeiro login (cópia das fichas modelo), apagar e exportar conta
+  conta.py              primeiro login (cópia das fichas modelo) e apagar conta
   models.py             tabelas + esquemas de sincronização
   sync.py               lógica de envio/download, separada por usuário
   routers/auth.py       GET /api/auth/config, POST /api/auth/google, POST /api/auth/dev (só local)
-  routers/conta.py      GET/PATCH/DELETE /api/conta, GET /api/conta/exportar
+  routers/conta.py      GET/PATCH/DELETE /api/conta (perfil e metas; apagar a conta)
   routers/sync.py       GET/POST /api/sync
   seed.py               carrega o catálogo do TOML
   data/treino.toml      exercícios do catálogo e fichas modelo
@@ -102,9 +102,10 @@ frontend/
   src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
   src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor
   src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set, gráficos
+  src/lib/perfil.ts            perfil (primeiro acesso e Conta): limites, altura, peso atual
   src/lib/ids.ts               UUID v4 e v5 (id do registro do dia), sem depender de https
   src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev), sair
-  src/telas/                   Login, Inicio, FichaTela, Treino, Dia, Graficos, Conta, ComoInstalar
+  src/telas/                   Login, BoasVindas, Inicio, FichaTela, Treino, Dia, Graficos, Conta
 vercel.json             build do frontend + rewrite /api/* → função Python
 .nvmrc                  versão do Node (usada também pela CI)
 .vscode/                extensões recomendadas e ruff ao salvar (o resto da pasta é ignorado)
@@ -150,7 +151,9 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 `usuario_id`, definido pelo servidor. Com `usuario_id` nulo, exercícios e fichas são do catálogo.
 
 - **Usuario** (não sincroniza; `GET/PATCH /api/conta`): `id`, `google_sub` (único), `email`,
-  `nome`, `criado_em` e as metas opcionais `meta_kcal`, `meta_proteina_g`, `meta_peso_kg`.
+  `criado_em` e o perfil, todo opcional: `nome` (vem do Google no primeiro login; depois é a
+  pessoa quem muda, e o login não troca mais), `altura_cm` (50–250), `idade` (10–120) e as metas
+  `meta_kcal`, `meta_proteina_g`, `meta_peso_kg`. O peso atual não fica aqui (veja "Perfil").
 - **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT) e midia_url (GIF
   ou vídeo). Os do catálogo vêm do seed e só o seed altera; cada um pode criar os seus. É o único
   download que traz `usuario_id` (nulo = catálogo, só leitura no app).
@@ -178,6 +181,12 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
   gravada com o `exercicio_id` do que foi feito.
 - **Gráfico de evolução**: por exercício, a maior `carga_kg` de cada sessão ao longo do tempo.
 - Sem timer de descanso na primeira versão.
+- **Perfil (primeiro acesso):** enquanto faltar nome, altura ou idade, o app abre a tela de
+  boas-vindas pedindo nome, peso, altura e idade antes de qualquer outra. O **peso atual** é o
+  último `peso_kg` do RegistroDiario: o peso digitado ali (ou na Conta) entra no registro de hoje,
+  que funciona offline e já aparece no gráfico. Nome, altura e idade vão por `PATCH /api/conta` e
+  precisam de internet; sem ela, o primeiro acesso oferece "Preencher depois" e pergunta de novo
+  na próxima abertura. A altura aceita metros ("1,78" vira 178 cm).
 
 ## Catálogo (seed)
 
@@ -207,8 +216,9 @@ mudar à vontade (nova migração, sem migrar dados).
 - Remover um e-mail da lista bloqueia novos logins e a sincronização daquele usuário.
 
 ### Dados por usuário
-- Nova tabela **Usuario**: `id`, `google_sub` (único), `email`, `nome`, `criado_em` e as metas
-  (`meta_kcal`, `meta_proteina_g`, `meta_peso_kg`, todas opcionais).
+- Nova tabela **Usuario**: `id`, `google_sub` (único), `email`, `nome`, `criado_em`, o perfil
+  (`altura_cm`, `idade`) e as metas (`meta_kcal`, `meta_proteina_g`, `meta_peso_kg`), tudo
+  opcional.
 - **Todo registro pessoal tem `usuario_id`**: fichas, itens da ficha, sessões, séries, registro
   diário e exercícios criados pelo usuário. O servidor **define o `usuario_id` a partir do token**
   e ignora o que vier do app.
@@ -253,7 +263,8 @@ mudar à vontade (nova migração, sem migrar dados).
 - O repositório é **público**: nunca commitar `.env`, dados reais ou qualquer coisa pessoal do
   vault (veja `CLAUDE.local.md`, que fica só na máquina; o modelo é `CLAUDE.local.example.md`).
 - **Apagar minha conta** (`DELETE /api/conta`): apaga de verdade todos os registros do usuário
-  (exceção à exclusão lógica). Também `GET /api/conta/exportar` com tudo em JSON.
+  (exceção à exclusão lógica). No app é um botão só, que abre um modal pedindo para digitar
+  "apagar". Exportar em JSON saiu (decidido em 24/11/2026: não precisa).
 
 ### Custo zero
 - **Nunca cadastrar cartão** na Vercel, no Neon nem no Google Cloud. Sem cartão nada é cobrado;
@@ -275,18 +286,20 @@ mudar à vontade (nova migração, sem migrar dados).
 - **iPhone:** tem que ser no **Safari**, botão de compartilhar → "Adicionar à Tela de Início".
 - O app pede `navigator.storage.persist()`, porque o iPhone pode apagar os dados locais de sites
   pouco usados. A sincronização com o servidor é a garantia.
-- Ter uma tela "Como instalar" no app com esses passos.
+- **Sem tela "Como instalar"** no app (decidido em 24/11/2026): ao abrir o link, o navegador já
+  oferece instalar. No iPhone o Safari não mostra esse botão, então quem tiver iPhone precisa do
+  passo acima junto com o link.
 - Atualização automática do service worker na próxima abertura com internet.
 
 ### Ordem de trabalho
 1. **Backend multiusuário:** Usuario, `usuario_id` em tudo, login com Google e token de sessão,
-   convites por e-mail, isolamento no sync, apagar e exportar conta. Testes de isolamento.
+   convites por e-mail, isolamento no sync, apagar conta. Testes de isolamento.
 2. **Modelo novo do treino:** `alvo_reps`, `aquecimento`, `grupo_biset`, `alternativas`,
    RegistroDiario e metas. Nova migração.
 3. **Seed das fichas modelo** a partir de `Treino/Push.md`, `Pull.md`, `Leg day.md` e `Upper.md` do
    vault (só nomes, séries, alvo, aquecimento, bi-set, Plano B e dicas de execução).
 4. **Frontend PWA** (`frontend/`): login, fichas, registrar treino offline, última vez e avisos de
-   progressão, registro diário, gráficos, como instalar.
+   progressão, registro diário, gráficos.
 5. **Deploy** (abaixo) e convite dos amigos.
 6. Atualizar o README (em inglês) para o app multiusuário.
 
@@ -315,9 +328,10 @@ mudar à vontade (nova migração, sem migrar dados).
 
 - [x] Backend de um usuário: modelos, migrações, sincronização, autenticação, seed e testes
 - [x] Plano multiusuário e custo zero decidido (24/11/2026)
-- [x] Backend multiusuário + login com Google + convites, isolamento, apagar/exportar conta
+- [x] Backend multiusuário + login com Google + convites, isolamento, apagar conta
 - [x] Modelo novo do treino (alvo, aquecimento, bi-set, Plano B duplo, registro diário, metas)
 - [x] Fichas modelo no `treino.toml` (treino v2 do vault) + imagens
 - [x] Frontend PWA (login, treino offline, última vez, progressão, registro do dia, gráficos,
-  metas, como instalar, exportar e apagar conta)
+  metas e apagar conta)
+- [x] Primeiro acesso com perfil (nome, peso, altura, idade) e tela Conta revista (24/11/2026)
 - [ ] Deploy Vercel + Neon e instalação nos celulares

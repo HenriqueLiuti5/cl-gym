@@ -26,27 +26,34 @@ from backend.db import ListaUUID, UTCDateTime
 # --- Usuários -------------------------------------------------------------------------------
 
 
-class Metas(SQLModel):
+class Perfil(SQLModel):
+    """O que a própria pessoa altera na conta (`PATCH /api/conta`): dados atuais e metas.
+
+    O peso atual não fica aqui: é o último `peso_kg` lançado no registro do dia.
+    """
+
+    # Vem do Google no primeiro login; depois é a pessoa quem escolhe.
+    nome: str | None = Field(default=None, min_length=1, max_length=200)
+    altura_cm: int | None = Field(default=None, ge=50, le=250)
+    idade: int | None = Field(default=None, ge=10, le=120)
     meta_kcal: int | None = Field(default=None, ge=0, le=20000)
     meta_proteina_g: float | None = Field(default=None, ge=0, le=1000)
     meta_peso_kg: float | None = Field(default=None, gt=0, le=500)
 
 
-class Usuario(Metas, table=True):
+class Usuario(Perfil, table=True):
     __tablename__ = "usuarios"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     # Identificador fixo da conta Google (o e-mail pode mudar).
     google_sub: str = Field(max_length=255, unique=True, index=True)
     email: str = Field(max_length=320)
-    nome: str | None = Field(default=None, max_length=200)
     criado_em: AwareDatetime = Field(sa_type=UTCDateTime)
 
 
-class UsuarioOut(Metas):
+class UsuarioOut(Perfil):
     id: uuid.UUID
     email: str
-    nome: str | None
     criado_em: AwareDatetime
 
 

@@ -119,10 +119,6 @@ export function Login({ expirou }: { expirou: boolean }) {
           </Botao>
         </Cartao>
       )}
-
-      <a href="#/instalar" className="text-center text-sm text-emerald-400 underline">
-        Como instalar o app no celular
-      </a>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-"""Conta do usuário: primeiro login (com a cópia das fichas modelo), apagar e exportar."""
+"""Conta do usuário: primeiro login (com a cópia das fichas modelo) e apagar a conta."""
 
 import uuid
 from datetime import UTC, datetime
@@ -15,9 +15,8 @@ from backend.models import (
     Serie,
     Sessao,
     Usuario,
-    UsuarioOut,
 )
-from backend.sync import Pacote, coletar_mudancas, proxima_versao
+from backend.sync import proxima_versao
 
 # Namespace das cópias: a mesma ficha modelo gera sempre o mesmo id para o mesmo usuário.
 NAMESPACE_COPIAS = uuid.UUID("0f6b1e1c-8f0a-4c43-9d2e-6a7b3c1d5e90")
@@ -97,9 +96,11 @@ def entrar(session: Session, identidade: IdentidadeGoogle) -> tuple[Usuario, boo
         session.flush()
         copiar_fichas_modelo(session, usuario.id)
     else:
-        # O e-mail e o nome podem mudar na conta Google.
+        # O e-mail pode mudar na conta Google. O nome do Google só entra se a pessoa não tiver
+        # um: depois do primeiro acesso, o nome é o que ela escolheu no app.
         usuario.email = identidade.email
-        usuario.nome = identidade.nome
+        if not usuario.nome:
+            usuario.nome = identidade.nome
     session.commit()
     session.refresh(usuario)
     return usuario, novo
@@ -112,19 +113,3 @@ def apagar_conta(session: Session, usuario_id: uuid.UUID) -> None:
         session.exec(delete(modelo).where(col(modelo.usuario_id) == usuario_id))
     session.exec(delete(Usuario).where(col(Usuario.id) == usuario_id))
     session.commit()
-
-
-class Exportacao(Pacote):
-    """Tudo o que é do usuário (inclusive o que foi excluído no app) e o catálogo de exercícios."""
-
-    exportado_em: datetime
-    usuario: UsuarioOut
-
-
-def exportar_conta(session: Session, usuario: Usuario) -> Exportacao:
-    pacote = coletar_mudancas(session, usuario.id, desde=0)
-    return Exportacao(
-        exportado_em=datetime.now(UTC),
-        usuario=UsuarioOut.model_validate(usuario, from_attributes=True),
-        **{campo: getattr(pacote, campo) for campo in Pacote.model_fields},
-    )

@@ -66,6 +66,8 @@ export interface Usuario {
   email: string;
   nome: string | null;
   criado_em: string;
+  altura_cm: number | null;
+  idade: number | null;
   meta_kcal: number | null;
   meta_proteina_g: number | null;
   meta_peso_kg: number | null;
