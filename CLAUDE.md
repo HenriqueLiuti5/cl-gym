@@ -24,7 +24,7 @@ O plano completo está em "Plano multiusuário (v1 para os amigos)", mais abaixo
 |---|---|
 | Backend | FastAPI + SQLModel + Alembic, Python 3.12, gerenciado com `uv` |
 | Banco | SQLite em desenvolvimento/testes · Postgres no **Neon** (plano grátis) em produção |
-| Frontend (a fazer) | Vite + React + TypeScript + Tailwind, PWA (`vite-plugin-pwa`), Dexie (IndexedDB), Recharts. O Henrique não faz questão da stack; ficou esta por ser a mais fácil de publicar na Vercel (detecta o Vite sozinha) e por o PWA offline sair pronto com o plugin |
+| Frontend (`frontend/`) | Vite + React + TypeScript + Tailwind, PWA (`vite-plugin-pwa`), Dexie (IndexedDB), Recharts, Vitest. Node 22. O Henrique não faz questão da stack; ficou esta por ser a mais fácil de publicar na Vercel (detecta o Vite sozinha) e por o PWA offline sair pronto com o plugin |
 | Hospedagem | **Vercel** (plano Hobby): frontend estático + FastAPI como função Python em `api/index.py`, no mesmo projeto e no mesmo endereço (`cl-gym.vercel.app` e `/api`) |
 | Login | **Entrar com Google** (Google Identity Services), verificado no backend |
 
@@ -38,11 +38,22 @@ uv run uvicorn backend.main:app --reload  # API em http://localhost:8000 (docs e
 uv run pytest                             # testes
 uv run ruff check . && uv run ruff format .
 uv run alembic revision --autogenerate -m "descrição"   # depois de mudar models.py
+
+cd frontend
+npm install                               # dependências do app
+npm run dev                               # app em http://localhost:5173 (/api vai para a :8000)
+npm run lint && npm run typecheck && npm test
+npm run build                             # gera frontend/dist com o service worker
 ```
+
+Para testar o app sem um `GOOGLE_CLIENT_ID` de verdade, ponha `LOGIN_DEV=1` no `.env`: a tela de
+login mostra "Entrar como dev" (com um e-mail de `EMAILS_PERMITIDOS`). Isso só funciona com banco
+SQLite e fora da Vercel (`VERCEL` no ambiente); em produção `/api/auth/dev` responde 404. O
+`.claude/launch.json` tem os servidores `api` e `app` para o painel de navegador do Claude Code.
 
 Configuração via `.env` (veja `.env.example`): `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `SESSAO_SECRET`
 (mínimo 32 caracteres), `EMAILS_PERMITIDOS` (separados por vírgula) e, opcional, `SESSAO_DIAS`
-(padrão 90). As migrações e o seed só precisam do `DATABASE_URL`.
+(padrão 90) e `LOGIN_DEV` (só local). As migrações e o seed só precisam do `DATABASE_URL`.
 
 ## Estrutura
 
@@ -56,15 +67,24 @@ backend/
   conta.py              primeiro login (cópia das fichas modelo), apagar e exportar conta
   models.py             tabelas + esquemas de sincronização
   sync.py               lógica de envio/download, separada por usuário
-  routers/auth.py       POST /api/auth/google
+  routers/auth.py       GET /api/auth/config, POST /api/auth/google, POST /api/auth/dev (só local)
   routers/conta.py      GET/PATCH/DELETE /api/conta, GET /api/conta/exportar
   routers/sync.py       GET/POST /api/sync
   seed.py               carrega o catálogo do TOML
   data/treino.toml      exercícios do catálogo e fichas modelo
   migrations/           Alembic
   tests/                conftest (login simulado, sem rede), dados de exemplo e testes
-frontend/               (a criar) app React
-vercel.json             rewrite /api/* → função Python
+frontend/
+  index.html, vite.config.ts   PWA (manifest, service worker, cache das imagens), proxy de /api
+  public/                      ícones
+  src/main.tsx, App.tsx        entrada, rotas por hash (#/treino/<id>) e abas de baixo
+  src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
+  src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor
+  src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set, gráficos
+  src/lib/ids.ts               UUID v4 e v5 (id do registro do dia), sem depender de https
+  src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev), sair
+  src/telas/                   Login, Inicio, FichaTela, Treino, Dia, Graficos, Conta, ComoInstalar
+vercel.json             build do frontend + rewrite /api/* → função Python
 ```
 
 ## Arquitetura: offline-first
@@ -83,7 +103,13 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
   gravado.
 - `GET /api/sync?desde=<cursor>`: devolve o que mudou depois do cursor e o novo `cursor`. O app
   guarda o cursor. Se `desde` for maior que o cursor do servidor (banco recriado), volta tudo.
-- Ciclo do app: enviar pendentes → baixar desde o último cursor → salvar o cursor.
+- Ciclo do app: enviar pendentes → baixar desde o último cursor → salvar o cursor. No download,
+  uma mudança local ainda pendente e mais nova que a do servidor é mantida.
+- **Quando sincroniza:** ao abrir o app, ao terminar um treino, quando a internet volta (evento
+  `online`) e no botão "Sincronizar agora" da tela Conta. Nunca em intervalo fixo.
+- Erro 5xx ou falta de rede contam como "sem internet": tudo fica no celular. 401 pede login de
+  novo sem apagar os dados locais. O app valida os mesmos limites do servidor (ex.: carga até
+  1000 kg), porque um registro recusado (422) travaria os envios seguintes.
 - Todas as rotas exceto `/api/health` e `/api/auth/google` exigem `Authorization: Bearer <token
   de sessão>`. O envio e o download só enxergam os registros do usuário (veja abaixo).
 - **Isolamento:** o servidor grava o `usuario_id` do token (ignora o que vier do app). O download
@@ -255,9 +281,11 @@ mudar à vontade (nova migração, sem migrar dados).
    origens `http://localhost:5173` e `https://cl-gym.vercel.app`.
 4. Rodar as migrações e o seed no Neon a partir da máquina local:
    `DATABASE_URL="..." uv run alembic upgrade head && DATABASE_URL="..." uv run python -m backend.seed`.
-5. Validar no primeiro deploy como a Vercel instala as dependências Python (pyproject/uv.lock ou
-   `requirements.txt` via `uv export`), o `vercel.json` e o build do `frontend/` (comando e pasta
-   de saída). O Henrique faz os passos que pedem login nas contas dele.
+5. O `vercel.json` já define o build do frontend (`npm --prefix frontend ci`,
+   `npm --prefix frontend run build`, saída `frontend/dist`) e o rewrite de `/api`. Validar no
+   primeiro deploy como a Vercel instala as dependências Python (pyproject/uv.lock ou
+   `requirements.txt` via `uv export`). Nunca definir `LOGIN_DEV` na Vercel (ele já não funciona
+   lá, mas não precisa estar). O Henrique faz os passos que pedem login nas contas dele.
 
 ## Status
 
@@ -265,6 +293,7 @@ mudar à vontade (nova migração, sem migrar dados).
 - [x] Plano multiusuário e custo zero decidido (24/11/2026)
 - [x] Backend multiusuário + login com Google + convites, isolamento, apagar/exportar conta
 - [x] Modelo novo do treino (alvo, aquecimento, bi-set, Plano B duplo, registro diário, metas)
-- [ ] Fichas modelo no `treino.toml` (treino v2 do vault) + imagens
-- [ ] Frontend PWA
+- [x] Fichas modelo no `treino.toml` (treino v2 do vault) + imagens
+- [x] Frontend PWA (login, treino offline, última vez, progressão, registro do dia, gráficos,
+  metas, como instalar, exportar e apagar conta)
 - [ ] Deploy Vercel + Neon e instalação nos celulares
