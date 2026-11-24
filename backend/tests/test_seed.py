@@ -184,8 +184,24 @@ def test_catalogo_invalido(alteracao: dict[str, object]) -> None:
         catalogo(**alteracao)
 
 
-def test_arquivo_do_projeto_e_valido() -> None:
-    ler_catalogo(ARQUIVO_PADRAO)
+def test_arquivo_do_projeto_segue_as_regras_do_treino() -> None:
+    catalogo = ler_catalogo(ARQUIVO_PADRAO)
+    assert [f.nome for f in sorted(catalogo.fichas, key=lambda f: f.ordem)] == [
+        "Push",
+        "Pull",
+        "Leg day",
+        "Upper",
+    ]
+    for ficha in catalogo.fichas:
+        # Aquecimento só no primeiro exercício.
+        assert [item.aquecimento for item in ficha.exercicios][0] is True
+        assert not any(item.aquecimento for item in ficha.exercicios[1:]), ficha.slug
+        # Bi-set é sempre um par de itens seguidos.
+        grupos = [item.grupo_biset for item in ficha.exercicios if item.grupo_biset]
+        assert all(grupos.count(g) == 2 for g in grupos), ficha.slug
+    pull = next(f for f in catalogo.fichas if f.slug == "pull")
+    remada = next(i for i in pull.exercicios if i.exercicio == "remada-articulada")
+    assert remada.alternativas[0] == "remada-serrote"
 
 
 def test_main_carrega_arquivo(tmp_path: Path, session: Session) -> None:

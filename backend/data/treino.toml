@@ -37,28 +37,616 @@
 #     { exercicio = "triceps-corda", series = 3, alvo_reps = 12, grupo_biset = 1 },
 #   ]
 #
-# As fichas modelo de verdade (treino v2: Push, Pull, Leg day e Upper) entram na etapa 3.
+
+# --- Exercícios do catálogo ---------------------------------------------------------------
+
+[[exercicios]]
+slug = "supino-inclinado-halter"
+nome = "Supino inclinado com halter"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "supino-inclinado-maquina"
+nome = "Supino inclinado na máquina"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leverage_Incline_Chest_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leverage_Incline_Chest_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "crossover-baixo-cima"
+nome = "Crossover de baixo pra cima"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Low_Cable_Crossover/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Low_Cable_Crossover/1.jpg",
+]
+
+[[exercicios]]
+slug = "crossover-porcao-inferior"
+nome = "Crossover (porção inferior)"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Crossover/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Crossover/1.jpg",
+]
+
+[[exercicios]]
+slug = "supino-declinado-halter"
+nome = "Supino declinado com halter"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Bench_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Bench_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "crucifixo-declinado"
+nome = "Crucifixo declinado"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Flyes/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Dumbbell_Flyes/1.jpg",
+]
+
+[[exercicios]]
+slug = "crucifixo"
+nome = "Crucifixo"
+grupo_muscular = "Peito"
+
+[[exercicios]]
+slug = "peck-deck"
+nome = "Peck deck (voador)"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butterfly/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butterfly/1.jpg",
+]
+
+[[exercicios]]
+slug = "crucifixo-polia"
+nome = "Crucifixo na polia"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Cable_Flyes/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Cable_Flyes/1.jpg",
+]
+
+[[exercicios]]
+slug = "elevacao-lateral"
+nome = "Elevação lateral com halter"
+grupo_muscular = "Ombro"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/1.jpg",
+]
+
+[[exercicios]]
+slug = "elevacao-lateral-polia"
+nome = "Elevação lateral na polia"
+grupo_muscular = "Ombro"
+
+[[exercicios]]
+slug = "elevacao-lateral-maquina"
+nome = "Elevação lateral na máquina"
+grupo_muscular = "Ombro"
+
+[[exercicios]]
+slug = "triceps-pulley"
+nome = "Tríceps pulley"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown/1.jpg",
+]
+
+[[exercicios]]
+slug = "triceps-corda"
+nome = "Tríceps corda"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown_-_Rope_Attachment/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Triceps_Pushdown_-_Rope_Attachment/1.jpg",
+]
+
+[[exercicios]]
+slug = "triceps-maquina"
+nome = "Tríceps na máquina"
+grupo_muscular = "Tríceps"
+
+[[exercicios]]
+slug = "triceps-frances"
+nome = "Tríceps francês"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Triceps_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Triceps_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "triceps-testa-halter"
+nome = "Tríceps testa com halter"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lying_Dumbbell_Tricep_Extension/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lying_Dumbbell_Tricep_Extension/1.jpg",
+]
+
+[[exercicios]]
+slug = "triceps-frances-polia"
+nome = "Tríceps francês na polia com corda"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Rope_Overhead_Triceps_Extension/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Rope_Overhead_Triceps_Extension/1.jpg",
+]
+
+[[exercicios]]
+slug = "puxada-barra"
+nome = "Puxada com barra"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Wide-Grip_Lat_Pulldown/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Wide-Grip_Lat_Pulldown/1.jpg",
+]
+
+[[exercicios]]
+slug = "puxada-articulada"
+nome = "Puxada articulada"
+grupo_muscular = "Costas"
+
+[[exercicios]]
+slug = "puxada-pegada-neutra"
+nome = "Puxada com pegada neutra"
+grupo_muscular = "Costas"
+
+[[exercicios]]
+slug = "remada-articulada"
+nome = "Remada articulada"
+grupo_muscular = "Costas"
+
+[[exercicios]]
+slug = "remada-serrote"
+nome = "Remada serrote com halter"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/1.jpg",
+]
+
+[[exercicios]]
+slug = "remada-cavalinho"
+nome = "Remada cavalinho"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/T-Bar_Row_with_Handle/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/T-Bar_Row_with_Handle/1.jpg",
+]
+
+[[exercicios]]
+slug = "remada-baixa"
+nome = "Remada baixa"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Cable_Rows/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Cable_Rows/1.jpg",
+]
+
+[[exercicios]]
+slug = "remada-maquina"
+nome = "Remada na máquina"
+grupo_muscular = "Costas"
+
+[[exercicios]]
+slug = "pulldown-corda"
+nome = "Pulldown com corda na polia"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rope_Straight-Arm_Pulldown/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rope_Straight-Arm_Pulldown/1.jpg",
+]
+instrucoes = [
+  "Corda na polia alta, de pé, tronco levemente inclinado.",
+  "Com os braços quase esticados, leve a corda até a coxa.",
+  "Volte devagar até alongar as costas. Se dobrar muito o cotovelo, vira uma puxada.",
+]
+
+[[exercicios]]
+slug = "pullover-halter"
+nome = "Pullover com halter"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Straight-Arm_Dumbbell_Pullover/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Straight-Arm_Dumbbell_Pullover/1.jpg",
+]
+
+[[exercicios]]
+slug = "pulldown-barra-reta"
+nome = "Pulldown com barra reta"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Straight-Arm_Pulldown/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Straight-Arm_Pulldown/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-polia"
+nome = "Rosca com barra na polia"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Biceps_Cable_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Biceps_Cable_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-direta-barra"
+nome = "Rosca direta com barra"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-concentrada"
+nome = "Rosca concentrada"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Concentration_Curls/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Concentration_Curls/1.jpg",
+]
+
+[[exercicios]]
+slug = "face-pull"
+nome = "Face pull"
+grupo_muscular = "Posterior de ombro"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull/1.jpg",
+]
+instrucoes = [
+  "Corda na polia na altura do rosto.",
+  "Puxe em direção à testa abrindo os cotovelos para os lados.",
+  "Carga leve e movimento controlado: o trabalho é no posterior de ombro.",
+]
+
+[[exercicios]]
+slug = "crucifixo-inverso"
+nome = "Crucifixo inverso com halter"
+grupo_muscular = "Posterior de ombro"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Flyes/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Flyes/1.jpg",
+]
+
+[[exercicios]]
+slug = "peck-deck-invertido"
+nome = "Peck deck invertido"
+grupo_muscular = "Posterior de ombro"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Machine_Flyes/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Machine_Flyes/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-martelo"
+nome = "Rosca martelo"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hammer_Curls/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hammer_Curls/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-martelo-polia"
+nome = "Martelo na polia com corda"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Hammer_Curls_-_Rope_Attachment/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Hammer_Curls_-_Rope_Attachment/1.jpg",
+]
+
+[[exercicios]]
+slug = "agachamento-hack"
+nome = "Agachamento hack"
+grupo_muscular = "Quadríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hack_Squat/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hack_Squat/1.jpg",
+]
+
+[[exercicios]]
+slug = "agachamento-smith"
+nome = "Agachamento no smith"
+grupo_muscular = "Quadríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Machine_Squat/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Machine_Squat/1.jpg",
+]
+
+[[exercicios]]
+slug = "agachamento-bulgaro"
+nome = "Agachamento búlgaro"
+grupo_muscular = "Quadríceps"
+
+[[exercicios]]
+slug = "stiff"
+nome = "Stiff"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Barbell_Deadlift/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Barbell_Deadlift/1.jpg",
+]
+
+[[exercicios]]
+slug = "stiff-halter"
+nome = "Stiff com halter"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg",
+]
+
+[[exercicios]]
+slug = "terra-romeno"
+nome = "Levantamento terra romeno"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Romanian_Deadlift/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Romanian_Deadlift/1.jpg",
+]
+
+[[exercicios]]
+slug = "leg-press"
+nome = "Leg press"
+grupo_muscular = "Quadríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "leg-press-horizontal"
+nome = "Leg press horizontal"
+grupo_muscular = "Quadríceps"
+
+[[exercicios]]
+slug = "cadeira-flexora"
+nome = "Cadeira flexora"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Leg_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Leg_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "mesa-flexora"
+nome = "Mesa flexora"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lying_Leg_Curls/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Lying_Leg_Curls/1.jpg",
+]
+
+[[exercicios]]
+slug = "flexora-em-pe"
+nome = "Flexora em pé"
+grupo_muscular = "Posterior de coxa"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Leg_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Leg_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "panturrilha"
+nome = "Panturrilha em pé"
+grupo_muscular = "Panturrilha"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Calf_Raises/1.jpg",
+]
+
+[[exercicios]]
+slug = "panturrilha-leg-press"
+nome = "Panturrilha no leg press"
+grupo_muscular = "Panturrilha"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Press_On_The_Leg_Press_Machine/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Press_On_The_Leg_Press_Machine/1.jpg",
+]
+
+[[exercicios]]
+slug = "panturrilha-sentado"
+nome = "Panturrilha sentado"
+grupo_muscular = "Panturrilha"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Calf_Raise/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Seated_Calf_Raise/1.jpg",
+]
+
+[[exercicios]]
+slug = "supino-reto-halter"
+nome = "Supino reto com halter"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "supino-maquina"
+nome = "Supino na máquina"
+grupo_muscular = "Peito"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Machine_Bench_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Machine_Bench_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "flexao-carga"
+nome = "Flexão de braço com carga"
+grupo_muscular = "Peito"
+
+[[exercicios]]
+slug = "puxada-triangulo"
+nome = "Puxada triângulo"
+grupo_muscular = "Costas"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/V-Bar_Pulldown/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/V-Bar_Pulldown/1.jpg",
+]
+
+[[exercicios]]
+slug = "puxada-neutra-maquina"
+nome = "Puxada com pegada neutra na máquina"
+grupo_muscular = "Costas"
+
+[[exercicios]]
+slug = "desenvolvimento"
+nome = "Desenvolvimento"
+grupo_muscular = "Ombro"
+
+[[exercicios]]
+slug = "desenvolvimento-maquina"
+nome = "Desenvolvimento na máquina"
+grupo_muscular = "Ombro"
+
+[[exercicios]]
+slug = "arnold-press"
+nome = "Arnold press"
+grupo_muscular = "Ombro"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arnold_Dumbbell_Press/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arnold_Dumbbell_Press/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-direta-halter"
+nome = "Rosca direta com halter"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bicep_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bicep_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "rosca-barra-w"
+nome = "Rosca com barra W"
+grupo_muscular = "Bíceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/EZ-Bar_Curl/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/EZ-Bar_Curl/1.jpg",
+]
+
+[[exercicios]]
+slug = "triceps-testa"
+nome = "Tríceps testa"
+grupo_muscular = "Tríceps"
+
+[[exercicios]]
+slug = "triceps-testa-barra-w"
+nome = "Tríceps testa com barra W"
+grupo_muscular = "Tríceps"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/EZ-Bar_Skullcrusher/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/EZ-Bar_Skullcrusher/1.jpg",
+]
+
+[[exercicios]]
+slug = "abdominal-polia"
+nome = "Abdominal na polia (ajoelhado, com corda)"
+grupo_muscular = "Abdômen"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Crunch/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cable_Crunch/1.jpg",
+]
+instrucoes = [
+  "Corda na polia alta, ajoelhado de frente para ela, mãos perto das orelhas.",
+  "Deixe o quadril parado, sem sentar nos calcanhares.",
+  "Enrole a coluna levando os cotovelos em direção às coxas, como se olhasse para o umbigo.",
+  "Segure 1 segundo e volte devagar. Quem faz força é o abdômen, não os braços.",
+]
+
+[[exercicios]]
+slug = "abdominal-maquina"
+nome = "Abdominal na máquina"
+grupo_muscular = "Abdômen"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Ab_Crunch_Machine/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Ab_Crunch_Machine/1.jpg",
+]
+
+[[exercicios]]
+slug = "elevacao-pernas"
+nome = "Elevação de pernas (infra)"
+grupo_muscular = "Abdômen"
+imagens = [
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Lying_Leg_Raise/0.jpg",
+  "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Lying_Leg_Raise/1.jpg",
+]
+instrucoes = [
+  "Deitado no banco, segure o banco atrás da cabeça.",
+  "Suba as pernas quase esticadas e, no fim, tire o quadril do banco enrolando a pelve.",
+  "Desça devagar, sem encostar as pernas no banco.",
+]
+
+# --- Fichas modelo (treino v2) ------------------------------------------------------------
 
 [[fichas]]
-slug = "peito-triceps"
-nome = "Peito e Tríceps"
+slug = "push"
+nome = "Push"
 ordem = 1
-exercicios = []
+exercicios = [
+  { exercicio = "supino-inclinado-halter", series = 3, alvo_reps = 8, aquecimento = true, alternativas = ["supino-inclinado-maquina", "crossover-baixo-cima"] },
+  { exercicio = "crossover-porcao-inferior", series = 3, alvo_reps = 10, alternativas = ["supino-declinado-halter", "crucifixo-declinado"] },
+  { exercicio = "crucifixo", series = 2, alvo_reps = 8, alternativas = ["peck-deck", "crucifixo-polia"] },
+  { exercicio = "elevacao-lateral", series = 4, alvo_reps = 10, alternativas = ["elevacao-lateral-polia", "elevacao-lateral-maquina"] },
+  { exercicio = "triceps-pulley", series = 3, alvo_reps = 10, alternativas = ["triceps-corda", "triceps-maquina"] },
+  { exercicio = "triceps-frances", series = 2, alvo_reps = 8, alternativas = ["triceps-testa-halter", "triceps-frances-polia"] },
+]
 
 [[fichas]]
-slug = "costas-biceps"
-nome = "Costas e Bíceps"
+slug = "pull"
+nome = "Pull"
 ordem = 2
-exercicios = []
+exercicios = [
+  { exercicio = "puxada-barra", series = 3, alvo_reps = 8, aquecimento = true, alternativas = ["puxada-articulada", "puxada-pegada-neutra"] },
+  { exercicio = "remada-articulada", series = 3, alvo_reps = 8, alternativas = ["remada-serrote", "remada-cavalinho"], observacao = "Se a articulada da academia estiver ruim, faça o serrote (1ª opção do Plano B)." },
+  { exercicio = "remada-baixa", series = 3, alvo_reps = 8, alternativas = ["remada-maquina", "remada-serrote"] },
+  { exercicio = "pulldown-corda", series = 2, alvo_reps = 10, alternativas = ["pullover-halter", "pulldown-barra-reta"], observacao = "Braços quase esticados, leve a corda até a coxa. Se dobrar muito o cotovelo, vira puxada." },
+  { exercicio = "rosca-polia", series = 3, alvo_reps = 10, alternativas = ["rosca-direta-barra", "rosca-concentrada"] },
+  { exercicio = "face-pull", series = 3, alvo_reps = 12, grupo_biset = 1, alternativas = ["crucifixo-inverso", "peck-deck-invertido"], observacao = "Corda na altura do rosto, puxe em direção à testa abrindo os cotovelos. Carga leve e controlada." },
+  { exercicio = "rosca-martelo", series = 2, alvo_reps = 8, grupo_biset = 1, alternativas = ["rosca-martelo-polia"] },
+]
 
 [[fichas]]
-slug = "perna"
-nome = "Perna"
+slug = "leg-day"
+nome = "Leg day"
 ordem = 3
-exercicios = []
+exercicios = [
+  { exercicio = "agachamento-hack", series = 3, alvo_reps = 8, aquecimento = true, alternativas = ["agachamento-smith", "agachamento-bulgaro"] },
+  { exercicio = "stiff", series = 3, alvo_reps = 8, alternativas = ["stiff-halter", "terra-romeno"] },
+  { exercicio = "leg-press", series = 3, alvo_reps = 8, alternativas = ["leg-press-horizontal", "agachamento-smith"] },
+  { exercicio = "cadeira-flexora", series = 3, alvo_reps = 10, alternativas = ["mesa-flexora", "flexora-em-pe"] },
+  { exercicio = "panturrilha", series = 3, alvo_reps = 12, alternativas = ["panturrilha-leg-press", "panturrilha-sentado"] },
+]
 
 [[fichas]]
 slug = "upper"
 nome = "Upper"
 ordem = 4
-exercicios = []
+exercicios = [
+  { exercicio = "supino-reto-halter", series = 2, alvo_reps = 8, aquecimento = true, alternativas = ["supino-maquina", "flexao-carga"] },
+  { exercicio = "puxada-triangulo", series = 3, alvo_reps = 8, alternativas = ["puxada-neutra-maquina", "puxada-barra"] },
+  { exercicio = "desenvolvimento", series = 2, alvo_reps = 8, alternativas = ["desenvolvimento-maquina", "arnold-press"] },
+  { exercicio = "elevacao-lateral-polia", series = 3, alvo_reps = 10, alternativas = ["elevacao-lateral", "elevacao-lateral-maquina"] },
+  { exercicio = "crucifixo-inverso", series = 2, alvo_reps = 10, alternativas = ["peck-deck-invertido", "face-pull"] },
+  { exercicio = "rosca-direta-halter", series = 2, alvo_reps = 8, grupo_biset = 1, alternativas = ["rosca-barra-w", "rosca-polia"] },
+  { exercicio = "triceps-testa", series = 2, alvo_reps = 8, grupo_biset = 1, alternativas = ["triceps-testa-barra-w", "triceps-frances-polia"] },
+  { exercicio = "abdominal-polia", series = 3, alvo_reps = 12, alternativas = ["abdominal-maquina", "elevacao-pernas"], observacao = "Ajoelhado, quadril parado. Enrole a coluna levando os cotovelos às coxas; segure 1 s e volte devagar." },
+]
