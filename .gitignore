@@ -18,8 +18,10 @@ frontend/dev-dist/
 # Vercel
 .vercel/
 
-# Editores / sistema
-.vscode/
+# Editores / sistema (do VS Code, só as configurações do projeto vão para o Git)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 .DS_Store
 

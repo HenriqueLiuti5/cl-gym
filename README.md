@@ -65,27 +65,32 @@ The server side lives in [`backend/sync.py`](backend/sync.py) (tests in
 
 ## Running locally
 
-Requires [uv](https://docs.astral.sh/uv/) and Node 22.
+Requires git, [uv](https://docs.astral.sh/uv/) and Node 22 (pinned in [`.nvmrc`](.nvmrc)). uv
+downloads Python 3.12 by itself.
 
 ```bash
-uv sync
-cp .env.example .env               # set SESSAO_SECRET and EMAILS_PERMITIDOS; LOGIN_DEV=1 for local sign-in
-uv run alembic upgrade head
-uv run python -m backend.seed      # loads the exercise catalog and template plans
-uv run uvicorn backend.main:app --reload
+git clone https://github.com/HenriqueLiuti5/cl-gym.git && cd cl-gym
+uv run scripts/preparar.py         # one-time setup; safe to rerun after a pull
 ```
 
-In another terminal:
+The [setup script](scripts/preparar.py) is plain Python, so it is the same command on Linux,
+macOS and Windows. It creates a development `.env` from [`.env.example`](.env.example) (with a
+fresh session secret and the dev login enabled), migrates and seeds the local SQLite database with
+the exercise catalog and template plans, and installs the frontend with `npm ci`. It never
+overwrites an existing `.env` and never touches a non-SQLite database.
+
+Then run the API and the app in two terminals:
 
 ```bash
-cd frontend
-npm install
-npm run dev                        # http://localhost:5173, proxies /api to the backend
+uv run uvicorn backend.main:app --reload    # http://localhost:8000/api/docs
+npm --prefix frontend run dev               # http://localhost:5173, proxies /api to the backend
 ```
 
-With `LOGIN_DEV=1` the sign-in screen offers a development login (any invited e-mail), so you do
+The sign-in screen offers a development login (any e-mail from `EMAILS_PERMITIDOS`), so you do
 not need a Google client ID locally. It only works with SQLite and outside Vercel; in production
 the route answers 404.
+
+Checks (the same ones CI runs):
 
 ```bash
 uv run pytest

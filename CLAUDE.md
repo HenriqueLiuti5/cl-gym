@@ -28,9 +28,29 @@ O plano completo está em "Plano multiusuário (v1 para os amigos)", mais abaixo
 | Hospedagem | **Vercel** (plano Hobby): frontend estático + FastAPI como função Python em `api/index.py`, no mesmo projeto e no mesmo endereço (`cl-gym.vercel.app` e `/api`) |
 | Login | **Entrar com Google** (Google Identity Services), verificado no backend |
 
+## Computador novo
+
+Precisa de `git`, [uv](https://docs.astral.sh/uv/) e Node 22 (a versão fica no `.nvmrc`; com
+nvm/fnm, `nvm use`). O Python 3.12 o `uv` baixa sozinho. Depois:
+
+```bash
+git clone https://github.com/HenriqueLiuti5/cl-gym.git && cd cl-gym
+uv run scripts/preparar.py     # .env de dev, banco, seed e npm ci; pode repetir após um git pull
+```
+
+O script cria o `.env` só se ele não existir (com `SESSAO_SECRET` nova e `LOGIN_DEV=1`) e só mexe
+em banco SQLite. É Python puro para rodar igual em Linux, macOS e Windows; o `.gitattributes`
+mantém tudo em LF também no Windows. O VS Code sugere as extensões de `.vscode/extensions.json`.
+
+**O que não vem no clone** (fica só em cada máquina): o `.env`, o banco `clgym.db`, o
+`CLAUDE.local.md` (copie de `CLAUDE.local.example.md` e aponte para o vault), o
+`.claude/settings.local.json` e a memória do Claude Code. Por isso, **o que precisa valer em
+todos os computadores vai neste arquivo**, não na memória.
+
 ## Comandos
 
 ```bash
+uv run scripts/preparar.py                # computador novo (veja acima)
 uv sync                                   # instala dependências
 uv run alembic upgrade head               # cria/atualiza o banco local (clgym.db)
 uv run python -m backend.seed             # carrega backend/data/treino.toml no banco
@@ -40,7 +60,7 @@ uv run ruff check . && uv run ruff format .
 uv run alembic revision --autogenerate -m "descrição"   # depois de mudar models.py
 
 cd frontend
-npm install                               # dependências do app
+npm ci                                    # dependências do app, exatas do package-lock.json
 npm run dev                               # app em http://localhost:5173 (/api vai para a :8000)
 npm run lint && npm run typecheck && npm test
 npm run build                             # gera frontend/dist com o service worker
@@ -74,6 +94,7 @@ backend/
   data/treino.toml      exercícios do catálogo e fichas modelo
   migrations/           Alembic
   tests/                conftest (login simulado, sem rede), dados de exemplo e testes
+scripts/preparar.py     prepara um computador novo (.env de dev, banco, seed, npm ci)
 frontend/
   index.html, vite.config.ts   PWA (manifest, service worker, cache das imagens), proxy de /api
   public/                      ícones
@@ -85,6 +106,9 @@ frontend/
   src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev), sair
   src/telas/                   Login, Inicio, FichaTela, Treino, Dia, Graficos, Conta, ComoInstalar
 vercel.json             build do frontend + rewrite /api/* → função Python
+.nvmrc                  versão do Node (usada também pela CI)
+.vscode/                extensões recomendadas e ruff ao salvar (o resto da pasta é ignorado)
+CLAUDE.local.example.md modelo do CLAUDE.local.md (caminho do vault e regras de privacidade)
 ```
 
 ## Arquitetura: offline-first
@@ -227,7 +251,7 @@ mudar à vontade (nova migração, sem migrar dados).
 
 ### Privacidade
 - O repositório é **público**: nunca commitar `.env`, dados reais ou qualquer coisa pessoal do
-  vault (veja `CLAUDE.local.md`, que fica só na máquina).
+  vault (veja `CLAUDE.local.md`, que fica só na máquina; o modelo é `CLAUDE.local.example.md`).
 - **Apagar minha conta** (`DELETE /api/conta`): apaga de verdade todos os registros do usuário
   (exceção à exclusão lógica). Também `GET /api/conta/exportar` com tudo em JSON.
 
