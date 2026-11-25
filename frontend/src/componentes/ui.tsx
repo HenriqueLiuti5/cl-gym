@@ -50,7 +50,8 @@ export function Titulo({ children, subtitulo }: { children: ReactNode; subtitulo
 export function BarraTopo({ titulo, voltar, acao }: { titulo: ReactNode; voltar: string; acao?: ReactNode }) {
   return (
     <header className="sticky top-0 z-20 -mx-4 mb-4 flex h-12 items-center gap-1 border-b border-linha bg-fundo px-2">
-      <a href={voltar} className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-acento active:bg-campo" aria-label="Voltar">
+      {/* data-voltar: arrastar da borda esquerda vai para cá (componentes/Palco.tsx). */}
+      <a href={voltar} data-voltar className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-acento active:bg-campo" aria-label="Voltar">
         <Icone nome="voltar" className="h-6 w-6" />
       </a>
       <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold">{titulo}</h1>

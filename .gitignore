@@ -27,6 +27,9 @@ frontend/dev-dist/
 .idea/
 .DS_Store
 
-# Claude Code (arquivos locais)
+# Claude Code (arquivos locais; .playwright-mcp é o registro do navegador de testes e claude/
+# guarda exports de conversas, que têm dados pessoais e não podem ir para o repositório público)
 CLAUDE.local.md
 .claude/settings.local.json
+.playwright-mcp/
+claude/

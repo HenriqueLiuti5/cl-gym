@@ -1,7 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { Icone, type NomeIcone } from "./componentes/icones";
+import { Palco } from "./componentes/Palco";
 import { Aviso } from "./componentes/ui";
 import { lerToken } from "./lib/api";
 import { db } from "./lib/db";
@@ -31,7 +32,8 @@ const ABAS: { caminho: string; rotulo: string; icone: NomeIcone }[] = [
 
 function Navegacao({ atual }: { atual: string }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
+    // data-sem-arrasto: arrastar na barra de abas não troca de tela (só tocar).
+    <nav data-sem-arrasto className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {ABAS.map((aba) => {
           const ativa =
@@ -77,6 +79,7 @@ export function App() {
   const logado = Boolean(usuario && lerToken());
   // Quem escolheu "Preencher depois" (sem internet) no primeiro acesso, até fechar o app.
   const [perfilDepois, setPerfilDepois] = useState<string | null>(null);
+  const area = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!logado) return;
@@ -110,10 +113,19 @@ export function App() {
   else if (tela === "admin") conteudo = <Admin usuario={usuario} aba={parametro} />;
   else conteudo = <Inicio />;
 
+  // Arrastar o dedo para o lado troca de tela (componentes/Palco.tsx). touch-pan-y: rolar para cima
+  // e para baixo continua com o navegador; para o lado, com o app. overflow-x-clip: a tela que sai
+  // deslizando não deixa a página rolar para o lado (e, ao contrário do hidden, não atrapalha o
+  // topo fixo das telas internas).
   return (
-    <main className="mx-auto max-w-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
-      <FaixaSync estado={meta.get("estado_sync") as EstadoSync | undefined} />
-      <Suspense fallback={<p className="py-10 text-center text-[15px] text-texto-3">Carregando…</p>}>{conteudo}</Suspense>
+    <main
+      ref={area}
+      className="mx-auto max-w-md touch-pan-y touch-pinch-zoom overflow-x-clip px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+    >
+      <Palco rota={rota} area={area}>
+        <FaixaSync estado={meta.get("estado_sync") as EstadoSync | undefined} />
+        <Suspense fallback={<p className="py-10 text-center text-[15px] text-texto-3">Carregando…</p>}>{conteudo}</Suspense>
+      </Palco>
       <Navegacao atual={tela ?? ""} />
     </main>
   );

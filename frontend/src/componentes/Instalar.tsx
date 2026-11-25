@@ -108,16 +108,16 @@ export function BotaoInstalar() {
     <>
       {mostrar && (
         <button
-        type="button"
-        onClick={abrir}
-        className="flex w-full items-center gap-3 rounded-xl bg-superficie px-4 py-3 text-left active:bg-campo"
-      >
-        <img src="/icone-192.png" alt="" className="h-11 w-11 shrink-0 rounded-[11px]" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[17px] font-semibold">Instalar o app</span>
-          <span className="mt-0.5 block text-[14px] leading-snug text-texto-2">{FRASE}</span>
-        </span>
-        <Icone nome="avancar" className="-mr-1 h-5 w-5 text-texto-3" />
+          type="button"
+          onClick={abrir}
+          className="flex w-full items-center gap-3 rounded-xl bg-superficie px-4 py-3 text-left active:bg-campo"
+        >
+          <img src="/icone-192.png" alt="" className="h-11 w-11 shrink-0 rounded-[11px]" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[17px] font-semibold">Instalar o app</span>
+            <span className="mt-0.5 block text-[14px] leading-snug text-texto-2">{FRASE}</span>
+          </span>
+          <Icone nome="avancar" className="-mr-1 h-5 w-5 text-texto-3" />
         </button>
       )}
       {passos && <Passos plataforma={plataforma} fechar={fecharPassos} />}

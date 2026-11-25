@@ -130,10 +130,15 @@ frontend/
   src/lib/ids.ts               UUID v4 e v5 (ids do registro do dia e das metas), sem https
   src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev, com convite), sair
   src/lib/convite.ts           código do convite (normalizar, formatar, link)
+  src/lib/convitePendente.ts   convite já conferido, esperando o login (localStorage)
   src/lib/admin.ts             API e contas da área de administração
   src/lib/instalar.ts          instalar o app: pedido nativo do Chrome, plataforma, instalado
+  src/lib/navegacao.ts         ordem das telas ao arrastar o dedo e o lado de cada transição
   src/telas/                   Login, Convite, BoasVindas, Inicio, FichaTela, Treino, Dia,
                                Graficos, Conta, Admin
+  src/componentes/Palco.tsx    área das telas: arrastar troca de aba, voltar pela borda, transições
+  src/componentes/Entrada.tsx  peças do login e do convite: logo, botão do Google, código, login dev
+  src/componentes/admin/       Usuários e Convites da administração
   src/componentes/Instalar.tsx botão e linha "Instalar o app" (com as instruções do iPhone)
   src/componentes/ui.tsx       peças de tela: botão, lista agrupada, linha com campo, segmentos,
                                aviso, janela (Modal) e Confirmar
@@ -280,6 +285,21 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
 - **Padrões de celular:** título grande nas abas, barra fixa com voltar nas telas internas, listas
   agrupadas (estilo ajustes), campos em linha com a unidade ao lado, seletor de segmentos no lugar
   de abas de texto. Confirmação é a janela `Confirmar` do app, nunca o `confirm()` do navegador.
+- **Gestos de app** (pedido em 25/11/2026): arrastar o dedo para o lado troca de aba, com a tela
+  seguindo o dedo, na ordem Treinos → Dia → Evolução (Treino → Corpo → Nutrição → Curiosidades) →
+  Conta, como abas de cima dentro das de baixo no Android; na Administração, entre Usuários e
+  Convites. O arrasto não começa em gráficos (`data-sem-arrasto`: lá ele mostra os valores),
+  campos, janelas, listas que rolam para o lado e na barra de abas, e nunca vira toque. No app
+  instalado, arrastar da borda esquerda numa tela interna volta (vai para o link `data-voltar` da
+  `BarraTopo`), porque o iPhone instalado não tem esse gesto. Toda troca de tela desliza do lado
+  certo, e "reduzir movimento" desliga as animações. Ordem em `lib/navegacao.ts`, gesto em
+  `componentes/Palco.tsx`.
+- **Barra de navegação do Android** (25/11/2026): o manifest **não tem `theme_color`** (no
+  `vite.config.ts` ele é `undefined`; apagar a linha faz o plugin pôr o verde padrão dele). Com
+  ele, o Chrome 156+ pinta a barra de baixo do app instalado com essa cor fixa, e no tema escuro
+  ficava uma faixa clara. Sem ele, a barra segue o tema do celular, e a de status segue as `<meta
+  theme-color>` do `index.html`. O aviso do plugin no build ("will not be able to be installed")
+  está desatualizado. A tela de abertura é preta (`background_color`), como o fundo da logo.
 - **Logo e ícone do app** (decidido em 25/11/2026): o emblema CL em preto e branco de
   `frontend/marca/logo.png`, a imagem do Henrique ampliada e limpa. É a única exceção à regra de
   brilho e gradiente: não redesenhar nem colorir. Os PNGs de `public/` saem dela com
@@ -447,7 +467,9 @@ dele.
    `.gitignore` ignora `.env.*` menos o `.env.example`): `DATABASE_URL` (Neon, URL **pooled**, com
    `-pooler` no host), `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` (própria da produção, diferente da de
    dev) e `ADMIN_EMAIL`. Na Vercel, cola-se o arquivo inteiro em Environment Variables.
-   Nunca definir `LOGIN_DEV` na Vercel (lá ele já não funciona, mas não precisa estar).
+   Nunca definir `LOGIN_DEV` na Vercel (lá ele já não funciona, mas não precisa estar). Como todo
+   `.env`, ele não vem no clone: em outro computador, copie-o por um meio privado (nunca pelo Git)
+   ou pegue a URL direta no painel do Neon (Connect) só para rodar as migrações.
 3. **Migrações e seed no Neon**, da máquina local, pela URL **direta** (a mesma sem `-pooler`: o
    PgBouncer do pooler atrapalha DDL). Nunca imprimir a URL, que tem a senha:
    ```bash
@@ -463,7 +485,9 @@ dele.
    convidar os amigos pela Administração (link + código, sem redeploy).
 6. Mudança de banco: rodar a migração no Neon (passo 3) **antes** do push que a usa, porque cada
    push na `main` publica sozinho. As migrações são aditivas, então o código antigo segue
-   funcionando com o banco já migrado.
+   funcionando com o banco já migrado. Em 25/11/2026, um push sem a migração deixou o login e a
+   sincronização da produção dando 500 (a rota pública `GET /api/convites/<uuid qualquer>`
+   responde 404 com o banco certo e 500 sem a tabela nova: serve para conferir).
 
 ## Status
 
@@ -482,4 +506,8 @@ dele.
 - [x] Administração (usuários com atividade, bloquear, excluir) e convites por link + código no
   lugar do `EMAILS_PERMITIDOS`; botão de instalar antes de entrar (25/11/2026)
 - [x] Primeiro login com Google em produção (25/11/2026)
+- [x] Gestos de app (arrastar troca de aba, voltar pela borda no app instalado, transições) e
+  barra de navegação do Android no tema do celular (25/11/2026)
+- [x] Migração dos convites no Neon (25/11/2026, depois de a produção ficar com erro 500)
+- [ ] `ADMIN_EMAIL` na Vercel (sem ele, ninguém vê a Administração nem gera convites)
 - [ ] Instalação nos celulares e convite dos amigos

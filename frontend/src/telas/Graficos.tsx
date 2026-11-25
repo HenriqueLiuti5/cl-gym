@@ -13,15 +13,10 @@ import { Segmentos, Titulo } from "../componentes/ui";
 import { db } from "../lib/db";
 import { exerciciosFeitos, montarTreinos, pontosDePeso } from "../lib/estatisticas";
 import { acharMeta, chaveComemoracao, lerComemoradas, situacaoDestino, type SituacaoMeta } from "../lib/metas";
+// As partes ficam em lib/navegacao.ts porque arrastar o dedo também passa por elas.
+import { PARTES_EVOLUCAO as ABAS } from "../lib/navegacao";
 import { dataLocal } from "../lib/regras";
 import type { Usuario } from "../lib/tipos";
-
-const ABAS = [
-  { id: "treino", rotulo: "Treino" },
-  { id: "corpo", rotulo: "Corpo" },
-  { id: "nutricao", rotulo: "Nutrição" },
-  { id: "curiosidades", rotulo: "Curiosidades" },
-];
 
 /** Metas de destino alcançadas e ainda não comemoradas neste aparelho (a primeira aparece). */
 function comemoracoesPendentes(d: DadosEvolucao, comemoradas: string[]): { situacao: SituacaoMeta; onde: string }[] {
@@ -82,10 +77,13 @@ export function Graficos({ usuario, aba }: { usuario: Usuario; aba?: string }) {
         <Segmentos opcoes={ABAS} escolhido={atual} link={(id) => `#/graficos/${id}`} rotulo="Partes da evolução" />
       </nav>
 
-      {atual === "treino" && <AbaTreino d={d} />}
-      {atual === "corpo" && <AbaCorpo d={d} />}
-      {atual === "nutricao" && <AbaNutricao d={d} />}
-      {atual === "curiosidades" && <AbaCuriosidades d={d} />}
+      {/* Só esta parte desliza ao trocar de parte; o título e os segmentos ficam (Palco.tsx). */}
+      <div data-pagina>
+        {atual === "treino" && <AbaTreino d={d} />}
+        {atual === "corpo" && <AbaCorpo d={d} />}
+        {atual === "nutricao" && <AbaNutricao d={d} />}
+        {atual === "curiosidades" && <AbaCuriosidades d={d} />}
+      </div>
 
       {pedido && <EditorMeta usuarioId={usuario.id} pedido={pedido} fechar={() => setPedido(null)} />}
       {!pedido && parabens && (

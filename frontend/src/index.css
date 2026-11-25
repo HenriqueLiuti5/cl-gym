@@ -127,6 +127,20 @@
     cursor: pointer;
   }
 
+  /* Como num app: segurar o dedo num link, botão ou imagem não abre o menu do navegador (prévia
+     do link, salvar imagem) nem começa a selecionar o texto deles. */
+  a,
+  button,
+  img {
+    -webkit-touch-callout: none;
+  }
+  a,
+  button,
+  nav {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-acento);
     outline-offset: 2px;

@@ -215,7 +215,8 @@ export function GraficoMeta({
 
   const margem = { top: 24, right: 26, left: 0, bottom: 0 };
   return (
-    <div role="img" aria-label={descricao} className="-mx-1">
+    // data-sem-arrasto: arrastar o dedo no gráfico mostra os valores, não troca de tela.
+    <div role="img" aria-label={descricao} className="-mx-1" data-sem-arrasto>
       <ResponsiveContainer width="100%" height={altura}>
         {tipo === "linha" ? (
           <LineChart data={dados} margin={margem}>

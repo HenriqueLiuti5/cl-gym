@@ -4,12 +4,8 @@
 import { AdminConvites } from "../componentes/admin/Convites";
 import { AdminUsuarios } from "../componentes/admin/Usuarios";
 import { BarraTopo, Segmentos } from "../componentes/ui";
+import { PARTES_ADMIN } from "../lib/navegacao";
 import type { Usuario } from "../lib/tipos";
-
-const PARTES = [
-  { id: "usuarios", rotulo: "Usuários" },
-  { id: "convites", rotulo: "Convites" },
-];
 
 export function Admin({ usuario, aba }: { usuario: Usuario; aba?: string }) {
   const atual = aba === "convites" ? "convites" : "usuarios";
@@ -17,9 +13,10 @@ export function Admin({ usuario, aba }: { usuario: Usuario; aba?: string }) {
     <div>
       <BarraTopo titulo="Administração" voltar="#/conta" />
       <div className="mb-3">
-        <Segmentos opcoes={PARTES} escolhido={atual} link={(id) => `#/admin/${id}`} rotulo="Partes da administração" />
+        <Segmentos opcoes={PARTES_ADMIN} escolhido={atual} link={(id) => `#/admin/${id}`} rotulo="Partes da administração" />
       </div>
-      {atual === "usuarios" ? <AdminUsuarios usuario={usuario} /> : <AdminConvites />}
+      {/* Só esta parte desliza ao trocar entre Usuários e Convites (Palco.tsx). */}
+      <div data-pagina>{atual === "usuarios" ? <AdminUsuarios usuario={usuario} /> : <AdminConvites />}</div>
     </div>
   );
 }
