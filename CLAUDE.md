@@ -59,6 +59,7 @@ uv run uvicorn backend.main:app --reload  # API em http://localhost:8000 (docs e
 uv run pytest                             # testes
 uv run ruff check . && uv run ruff format .
 uv run alembic revision --autogenerate -m "descrição"   # depois de mudar models.py
+uv run scripts/icones.py                  # refaz os ícones de frontend/public a partir da logo
 ```
 
 No SQLite as migrações rodam com as chaves estrangeiras desligadas (o modo batch recria a tabela
@@ -107,9 +108,11 @@ backend/
   migrations/           Alembic
   tests/                conftest (login simulado, sem rede), dados de exemplo e testes
 scripts/preparar.py     prepara um computador novo (.env de dev, banco, seed, npm ci)
+scripts/icones.py       gera os ícones do app a partir da logo (pillow, via `uv run`)
 frontend/
   index.html, vite.config.ts   PWA (manifest, service worker, cache das imagens), proxy de /api
-  public/                      ícones (os PNGs saem do icone.svg, em quadrado inteiro)
+  marca/logo.png               logo oficial (emblema CL, 2048 px), fonte dos ícones; não é publicada
+  public/                      ícones (saem da marca/logo.png com scripts/icones.py)
   src/index.css                cores do tema claro e do escuro (variáveis), estilos de base
   src/main.tsx, App.tsx        entrada, rotas por hash (#/treino/<id>) e abas de baixo
   src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
@@ -259,8 +262,11 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
 - **Padrões de celular:** título grande nas abas, barra fixa com voltar nas telas internas, listas
   agrupadas (estilo ajustes), campos em linha com a unidade ao lado, seletor de segmentos no lugar
   de abas de texto. Confirmação é a janela `Confirmar` do app, nunca o `confirm()` do navegador.
-- Ícone do app: halter branco sobre o azul do acento; os PNGs saem do `public/icone.svg` em
-  quadrado inteiro (o sistema aplica a máscara), com o desenho dentro da área segura.
+- **Logo e ícone do app** (decidido em 25/11/2026): o emblema CL em preto e branco de
+  `frontend/marca/logo.png`, a imagem do Henrique ampliada e limpa. É a única exceção à regra de
+  brilho e gradiente: não redesenhar nem colorir. Os PNGs de `public/` saem dela com
+  `uv run scripts/icones.py`, em fundo preto e quadrado inteiro (o sistema aplica a máscara); no
+  maskable o desenho fica dentro da área segura. A tela de login mostra o `icone-512.png`.
 
 ## Catálogo (seed)
 

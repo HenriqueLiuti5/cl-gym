@@ -90,7 +90,7 @@ export function Login({ expirou }: { expirou: boolean }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
       <div className="mb-10">
-        <img src="/icone.svg" alt="" className="mb-5 h-16 w-16 rounded-[18px]" />
+        <img src="/icone-512.png" alt="" className="mb-5 h-20 w-20 rounded-[22px]" />
         <h1 className="text-[32px] leading-tight font-bold">CL Gym</h1>
         <p className="mt-2 text-[17px] leading-snug text-texto-2">Treinos, cargas, peso e alimentação. Funciona mesmo sem internet.</p>
       </div>
