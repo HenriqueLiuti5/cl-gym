@@ -392,7 +392,10 @@ mudar à vontade (nova migração, sem migrar dados).
 - Timer de descanso.
 - Convites por tela de admin em vez de variável de ambiente.
 
-## Deploy (em andamento, 25/11/2026)
+## Deploy (feito em 25/11/2026)
+
+No ar em `https://cl-gym.vercel.app`. A Vercel está ligada ao GitHub: cada push na `main` publica
+sozinho. O banco é o projeto "CL GYM" do Neon (branch `production`, banco `neondb`).
 
 Tudo em São Paulo: função da Vercel em `gru1` (`regions` no `vercel.json`; o Hobby aceita uma
 região só) e banco do Neon em AWS `sa-east-1`. O Henrique faz os passos que pedem login nas contas
@@ -433,4 +436,5 @@ dele.
 - [x] Evolução com abas, metas (alvo no gráfico e parabéns), curiosidades, carbo e água, e dados
   de exemplo para a conta de dev (24/11/2026)
 - [x] Redesenho: visual simples e profissional, sem emojis, tema claro e escuro (24/11/2026)
-- [ ] Deploy Vercel + Neon e instalação nos celulares
+- [x] Deploy na Vercel (função em `gru1`) + Neon em São Paulo, migrações e seed (25/11/2026)
+- [ ] Primeiro login com Google em produção, instalação nos celulares e convite dos amigos
