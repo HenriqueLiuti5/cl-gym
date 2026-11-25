@@ -5,8 +5,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Ambiente e bancos locais
+# Ambiente e bancos locais (o .env.producao guarda as variáveis da Vercel)
 .env
+.env.*
+!.env.example
 *.db
 *.db-journal
 

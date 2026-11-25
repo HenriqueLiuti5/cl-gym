@@ -392,20 +392,33 @@ mudar à vontade (nova migração, sem migrar dados).
 - Timer de descanso.
 - Convites por tela de admin em vez de variável de ambiente.
 
-## Deploy (a fazer)
+## Deploy (em andamento, 25/11/2026)
 
-1. Criar o banco no Neon e usar a URL **pooled** (`-pooler`) como `DATABASE_URL` na Vercel.
-2. Definir na Vercel `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` e `EMAILS_PERMITIDOS` (antes era o
-   `APP_TOKEN`).
-3. No Google Cloud (sem faturamento): criar o cliente OAuth do tipo "Aplicativo da Web" com as
-   origens `http://localhost:5173` e `https://cl-gym.vercel.app`.
-4. Rodar as migrações e o seed no Neon a partir da máquina local:
-   `DATABASE_URL="..." uv run alembic upgrade head && DATABASE_URL="..." uv run python -m backend.seed`.
-5. O `vercel.json` já define o build do frontend (`npm --prefix frontend ci`,
-   `npm --prefix frontend run build`, saída `frontend/dist`) e o rewrite de `/api`. Validar no
-   primeiro deploy como a Vercel instala as dependências Python (pyproject/uv.lock ou
-   `requirements.txt` via `uv export`). Nunca definir `LOGIN_DEV` na Vercel (ele já não funciona
-   lá, mas não precisa estar). O Henrique faz os passos que pedem login nas contas dele.
+Tudo em São Paulo: função da Vercel em `gru1` (`regions` no `vercel.json`; o Hobby aceita uma
+região só) e banco do Neon em AWS `sa-east-1`. O Henrique faz os passos que pedem login nas contas
+dele.
+
+1. **Google Cloud** (feito): cliente OAuth "Aplicativo da Web", sem faturamento, com as origens
+   `http://localhost`, `http://localhost:5173` e `https://cl-gym.vercel.app`. Se a Vercel der outro
+   endereço ao projeto, acrescentar a origem nova lá.
+2. **Variáveis de produção** ficam no `.env.producao` da máquina do Henrique (fora do Git; o
+   `.gitignore` ignora `.env.*` menos o `.env.example`): `DATABASE_URL` (Neon, URL **pooled**, com
+   `-pooler` no host), `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` (própria da produção, diferente da de
+   dev) e `EMAILS_PERMITIDOS`. Na Vercel, cola-se o arquivo inteiro em Environment Variables.
+   Nunca definir `LOGIN_DEV` na Vercel (lá ele já não funciona, mas não precisa estar).
+3. **Migrações e seed no Neon**, da máquina local, pela URL **direta** (a mesma sem `-pooler`: o
+   PgBouncer do pooler atrapalha DDL). Nunca imprimir a URL, que tem a senha:
+   ```bash
+   URL=$(uv run python -c "from dotenv import dotenv_values as d; print(d('.env.producao')['DATABASE_URL'].replace('-pooler', ''))")
+   DATABASE_URL="$URL" uv run alembic upgrade head && DATABASE_URL="$URL" uv run python -m backend.seed
+   ```
+4. **Vercel**: importar o repositório do GitHub com o nome `cl-gym`. O `vercel.json` força o preset
+   `vite` (sem isso, a detecção de FastAPI pelo `pyproject.toml` pode tomar o projeto todo e as
+   funções de `api/` deixam de existir), define o build do frontend, o rewrite de `/api` e tira do
+   pacote da função o que ela não usa (`excludeFiles`: o Python não tem tree-shaking). As
+   dependências Python saem do `pyproject.toml` + `uv.lock` (a Vercel instala com uv).
+5. Conferir `https://cl-gym.vercel.app/api/health` e `/api/auth/config`, entrar com o Google e
+   mandar o link aos amigos (com o e-mail deles em `EMAILS_PERMITIDOS` e redeploy).
 
 ## Status
 
