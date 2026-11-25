@@ -53,12 +53,15 @@ class ListaUUID(TypeDecorator[list[uuid.UUID]]):
         return [uuid.UUID(item) for item in value or []]
 
 
-def criar_engine(url: str) -> Engine:
+def criar_engine(url: str, chaves_estrangeiras: bool = True) -> Engine:
+    """`chaves_estrangeiras=False` só nas migrações (veja `backend/migrations/env.py`)."""
     if url.startswith("sqlite"):
         kwargs: dict[str, Any] = {"connect_args": {"check_same_thread": False}}
         if url in ("sqlite://", "sqlite:///:memory:"):
             kwargs["poolclass"] = StaticPool  # mesmo banco em memória para todas as conexões
         engine = create_engine(url, **kwargs)
+        if not chaves_estrangeiras:
+            return engine
 
         @event.listens_for(engine, "connect")
         def _ativar_chaves_estrangeiras(conexao: Any, _registro: Any) -> None:

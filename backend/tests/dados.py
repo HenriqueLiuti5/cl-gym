@@ -26,7 +26,7 @@ def exercicio(id_: str, quando: datetime = T0, **extra: Any) -> dict[str, Any]:
 
 
 def treino_completo() -> tuple[dict[str, Any], dict[str, str]]:
-    ids = {nome: novo_id() for nome in ("ex", "ficha", "item", "sessao", "serie", "dia")}
+    ids = {nome: novo_id() for nome in ("ex", "ficha", "item", "sessao", "serie", "dia", "meta")}
     corpo = {
         "exercicios": [exercicio(ids["ex"])],
         "fichas": [{"id": ids["ficha"], "atualizado_em": iso(T0), "nome": "Peito e Tríceps"}],
@@ -70,14 +70,34 @@ def treino_completo() -> tuple[dict[str, Any], dict[str, str]]:
                 "peso_kg": 80.5,
                 "kcal": 2300,
                 "proteina_g": 150,
+                "carbo_g": 220.5,
+                "agua_ml": 2750,
                 "observacao": "Basquete",
+            }
+        ],
+        "metas": [
+            {
+                "id": ids["meta"],
+                "atualizado_em": iso(T0),
+                "tipo": "carga",
+                "exercicio_id": ids["ex"],
+                "valor": 40,
+                "inicio": 32.5,
             }
         ],
     }
     return corpo, ids
 
 
-TABELAS = ("exercicios", "fichas", "ficha_exercicios", "sessoes", "series", "registros_diarios")
+TABELAS = (
+    "exercicios",
+    "fichas",
+    "ficha_exercicios",
+    "sessoes",
+    "series",
+    "registros_diarios",
+    "metas",
+)
 
 
 def pacote_vazio(pacote: dict[str, Any]) -> bool:

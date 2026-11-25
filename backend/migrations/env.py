@@ -35,12 +35,19 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    engine = criar_engine(URL)
+    # No SQLite o modo batch recria a tabela (copia para uma nova e apaga a antiga), e apagar uma
+    # tabela referenciada (ex.: usuarios) falha com as chaves estrangeiras ligadas. Então elas
+    # ficam desligadas durante a migração, e no fim tudo é conferido.
+    engine = criar_engine(URL, chaves_estrangeiras=False)
     try:
         with engine.connect() as connection:
             context.configure(connection=connection, **OPCOES)
             with context.begin_transaction():
                 context.run_migrations()
+            if connection.dialect.name == "sqlite":
+                quebradas = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if quebradas:
+                    raise RuntimeError(f"Chaves estrangeiras quebradas pela migração: {quebradas}")
     finally:
         engine.dispose()
 

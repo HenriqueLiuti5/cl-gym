@@ -34,6 +34,9 @@ from backend.models import (
     FichaExercicioBase,
     FichaExercicioOut,
     FichaOut,
+    Meta,
+    MetaBase,
+    MetaOut,
     RegistroDiario,
     RegistroDiarioBase,
     RegistroDiarioOut,
@@ -90,6 +93,7 @@ TABELAS: tuple[Tabela, ...] = (
         ),
     ),
     Tabela("registros_diarios", RegistroDiario, RegistroDiarioOut),
+    Tabela("metas", Meta, MetaOut, (Referencia("exercicio_id", Exercicio),)),
 )
 
 
@@ -100,6 +104,7 @@ class Mudancas(SQLModel):
     sessoes: list[SessaoBase] = []
     series: list[SerieBase] = []
     registros_diarios: list[RegistroDiarioBase] = []
+    metas: list[MetaBase] = []
 
     @model_validator(mode="after")
     def _limitar_tamanho(self) -> "Mudancas":
@@ -119,6 +124,7 @@ class Pacote(SQLModel):
     sessoes: list[SessaoOut] = []
     series: list[SerieOut] = []
     registros_diarios: list[RegistroDiarioOut] = []
+    metas: list[MetaOut] = []
 
 
 class ResultadoEnvio(SQLModel):

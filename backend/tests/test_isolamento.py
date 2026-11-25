@@ -157,6 +157,7 @@ def _referencias_ao_a(ids_a: dict[str, str]) -> list[tuple[str, dict[str, Any]]]
     caso("series", "sessao_id", ids_a["sessao"])
     caso("series", "exercicio_id", ids_a["ex"])
     caso("series", "ficha_exercicio_id", ids_a["item"])
+    caso("metas", "exercicio_id", ids_a["ex"])
     return casos
 
 
@@ -165,7 +166,7 @@ def test_b_nao_referencia_registros_do_a(client: TestClient, client_b: TestClien
     antes = client.get("/api/sync").json()
 
     casos = _referencias_ao_a(ids_a)
-    assert len(casos) == 7
+    assert len(casos) == 8
     for tabela, corpo in casos:
         resposta = client_b.post("/api/sync", json=corpo)
         assert resposta.status_code == 409, (tabela, resposta.text)

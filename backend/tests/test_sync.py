@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -19,7 +20,7 @@ def test_envio_e_download_completo(client: TestClient) -> None:
 
     envio = client.post("/api/sync", json=corpo)
     assert envio.status_code == 200, envio.text
-    assert envio.json()["aplicados"] == 6
+    assert envio.json()["aplicados"] == 7
     assert envio.json()["ignorados"] == 0
 
     pacote = client.get("/api/sync", params={"desde": 0}).json()
@@ -30,7 +31,15 @@ def test_envio_e_download_completo(client: TestClient) -> None:
     assert (item["alvo_reps"], item["aquecimento"], item["grupo_biset"]) == (8, True, None)
     assert item["alternativas"] == []
     assert pacote["registros_diarios"][0]["data"] == "2026-11-03"
-    assert pacote["registros_diarios"][0]["peso_kg"] == 80.5
+    dia = pacote["registros_diarios"][0]
+    assert (dia["peso_kg"], dia["carbo_g"], dia["agua_ml"]) == (80.5, 220.5, 2750)
+    meta = pacote["metas"][0]
+    assert (meta["tipo"], meta["exercicio_id"], meta["valor"], meta["inicio"]) == (
+        "carga",
+        ids["ex"],
+        40,
+        32.5,
+    )
     assert pacote["exercicios"][0]["usuario_id"] is not None
     serie = pacote["series"][0]
     assert serie["id"] == ids["serie"]
@@ -76,7 +85,7 @@ def test_reenviar_o_mesmo_registro_nao_duplica(client: TestClient) -> None:
     client.post("/api/sync", json=corpo)
     segunda = client.post("/api/sync", json=corpo).json()
     assert segunda["aplicados"] == 0
-    assert segunda["ignorados"] == 6
+    assert segunda["ignorados"] == 7
     assert len(client.get("/api/sync").json()["series"]) == 1
 
 
@@ -153,6 +162,87 @@ def test_dois_registros_no_mesmo_dia_dao_conflito(client: TestClient) -> None:
     resposta = client.post("/api/sync", json={"registros_diarios": [outro]})
     assert resposta.status_code == 409
     assert "registros_diarios" in resposta.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"), [("carbo_g", -1), ("agua_ml", 20001), ("agua_ml", 1.5)]
+)
+def test_registro_do_dia_invalido_e_recusado(client: TestClient, campo: str, valor: float) -> None:
+    corpo, _ = treino_completo()
+    corpo["registros_diarios"][0][campo] = valor
+    assert client.post("/api/sync", json=corpo).status_code == 422
+
+
+# --- Metas ----------------------------------------------------------------------------------
+
+
+def meta(tipo: str, valor: float, exercicio_id: str | None = None, **extra: object) -> dict:
+    return {
+        "id": novo_id(),
+        "atualizado_em": iso(T0),
+        "tipo": tipo,
+        "exercicio_id": exercicio_id,
+        "valor": valor,
+        **extra,
+    }
+
+
+def test_metas_gerais_e_de_carga(client: TestClient) -> None:
+    corpo, ids = treino_completo()
+    corpo["metas"] += [
+        meta("peso", 78.5, inicio=84),
+        meta("agua", 3000),
+        meta("treinos_semana", 4),
+    ]
+    assert client.post("/api/sync", json=corpo).status_code == 200
+    metas = {m["tipo"]: m for m in client.get("/api/sync").json()["metas"]}
+    assert set(metas) == {"carga", "peso", "agua", "treinos_semana"}
+    assert (metas["peso"]["valor"], metas["peso"]["inicio"]) == (78.5, 84)
+    assert metas["carga"]["exercicio_id"] == ids["ex"]
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {"tipo": "abdomen", "valor": 10},  # tipo que não existe
+        {"tipo": "peso", "valor": 10},  # abaixo do mínimo
+        {"tipo": "kcal", "valor": 20001},
+        {"tipo": "agua", "valor": float("nan")},
+        {"tipo": "treinos_semana", "valor": 3.5},
+        {"tipo": "carga", "valor": 100},  # carga sem exercício
+        {"tipo": "peso", "valor": 80, "com_exercicio": True},  # só a de carga tem exercício
+        {"tipo": "peso", "valor": 80, "inicio": -1},
+    ],
+)
+def test_meta_invalida_e_recusada(client: TestClient, dados: dict) -> None:
+    corpo, ids = treino_completo()
+    exercicio_id = ids["ex"] if dados.pop("com_exercicio", False) else None
+    corpo["metas"] = [meta(dados.pop("tipo"), dados.pop("valor"), exercicio_id, **dados)]
+    # `content` com json.dumps: o `json=` do cliente de teste recusaria o NaN antes de enviar.
+    resposta = client.post("/api/sync", content=json.dumps(corpo))
+    assert resposta.status_code == 422, resposta.text
+
+
+@pytest.mark.parametrize("tipo", ["peso", "carga"])
+def test_duas_metas_iguais_dao_conflito(client: TestClient, tipo: str) -> None:
+    corpo, ids = treino_completo()
+    exercicio_id = ids["ex"] if tipo == "carga" else None
+    corpo["metas"] = [meta(tipo, 80, exercicio_id)]
+    assert client.post("/api/sync", json=corpo).status_code == 200
+    # Outro id para a mesma meta (o app deveria ter gerado o mesmo): conflito, nada gravado.
+    resposta = client.post("/api/sync", json={"metas": [meta(tipo, 90, exercicio_id)]})
+    assert resposta.status_code == 409
+    assert "metas" in resposta.json()["detail"]
+    assert [m["valor"] for m in client.get("/api/sync").json()["metas"]] == [80]
+
+
+def test_metas_de_carga_de_exercicios_diferentes_convivem(client: TestClient) -> None:
+    corpo, ids = treino_completo()
+    outro = novo_id()
+    corpo["exercicios"].append(exercicio(outro, nome="Leg press"))
+    corpo["metas"].append(meta("carga", 200, outro))
+    assert client.post("/api/sync", json=corpo).status_code == 200
+    assert len(client.get("/api/sync").json()["metas"]) == 2
 
 
 def test_referencia_inexistente_nao_grava_nada(client: TestClient) -> None:

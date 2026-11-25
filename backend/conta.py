@@ -11,6 +11,7 @@ from backend.models import (
     Exercicio,
     Ficha,
     FichaExercicio,
+    Meta,
     RegistroDiario,
     Serie,
     Sessao,
@@ -109,7 +110,7 @@ def entrar(session: Session, identidade: IdentidadeGoogle) -> tuple[Usuario, boo
 def apagar_conta(session: Session, usuario_id: uuid.UUID) -> None:
     """Apaga de verdade tudo do usuário (única exceção à exclusão lógica)."""
     # Filhos antes dos pais, por causa das chaves estrangeiras.
-    for modelo in (Serie, Sessao, RegistroDiario, FichaExercicio, Ficha, Exercicio):
+    for modelo in (Serie, Sessao, RegistroDiario, Meta, FichaExercicio, Ficha, Exercicio):
         session.exec(delete(modelo).where(col(modelo.usuario_id) == usuario_id))
     session.exec(delete(Usuario).where(col(Usuario.id) == usuario_id))
     session.commit()

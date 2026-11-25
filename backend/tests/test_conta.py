@@ -10,6 +10,7 @@ from backend.models import (
     Exercicio,
     Ficha,
     FichaExercicio,
+    Meta,
     RegistroDiario,
     Serie,
     Sessao,
@@ -21,7 +22,7 @@ from backend.tests.dados import T0, TABELAS, iso, treino_completo
 from backend.tests.test_auth import com_token
 from backend.tests.test_isolamento import carregar_catalogo_simples
 
-MODELOS_DO_USUARIO = (Exercicio, Ficha, FichaExercicio, Sessao, Serie, RegistroDiario)
+MODELOS_DO_USUARIO = (Exercicio, Ficha, FichaExercicio, Sessao, Serie, RegistroDiario, Meta)
 
 
 def registros_do_usuario(session: Session, usuario_id: uuid.UUID) -> int:
@@ -33,34 +34,28 @@ def registros_do_usuario(session: Session, usuario_id: uuid.UUID) -> int:
     return total
 
 
-# --- Perfil e metas -------------------------------------------------------------------------
+# --- Perfil ---------------------------------------------------------------------------------
 
 
-def test_conta_comeca_sem_altura_idade_e_metas(client: TestClient) -> None:
+def test_conta_comeca_sem_altura_e_idade(client: TestClient) -> None:
     conta = client.get("/api/conta").json()
     assert conta["email"] == EMAIL_A
     assert conta["nome"] == "Ana"  # veio do Google
-    campos = ("altura_cm", "idade", "meta_kcal", "meta_proteina_g", "meta_peso_kg")
-    assert all(conta[campo] is None for campo in campos)
+    assert (conta["altura_cm"], conta["idade"]) == (None, None)
+    # As metas não ficam na conta: são registros sincronizáveis (tabela `metas`).
+    assert not any(campo.startswith("meta") for campo in conta)
 
 
 def test_altera_so_os_campos_enviados(client: TestClient) -> None:
-    client.patch("/api/conta", json={"meta_kcal": 2200, "meta_peso_kg": 78.5})
-    client.patch("/api/conta", json={"nome": "Aninha", "altura_cm": 165, "idade": 29})
-    conta = client.patch("/api/conta", json={"meta_proteina_g": 160}).json()
+    client.patch("/api/conta", json={"nome": "Aninha", "altura_cm": 165})
+    conta = client.patch("/api/conta", json={"idade": 29}).json()
     assert (conta["nome"], conta["altura_cm"], conta["idade"]) == ("Aninha", 165, 29)
-    assert (conta["meta_kcal"], conta["meta_proteina_g"], conta["meta_peso_kg"]) == (
-        2200,
-        160,
-        78.5,
-    )
-    assert client.patch("/api/conta", json={"meta_kcal": None}).json()["meta_kcal"] is None
+    assert client.patch("/api/conta", json={"idade": None}).json()["idade"] is None
 
 
 @pytest.mark.parametrize(
     "corpo",
     [
-        {"meta_peso_kg": -1},
         {"altura_cm": 49},
         {"altura_cm": 251},
         {"altura_cm": 1.75},  # em metros: o app converte para cm antes de enviar
@@ -74,10 +69,10 @@ def test_perfil_invalido_e_recusado(client: TestClient, corpo: dict[str, object]
     assert client.patch("/api/conta", json=corpo).status_code == 422
 
 
-def test_perfil_e_metas_sao_de_cada_um(client: TestClient, client_b: TestClient) -> None:
-    client.patch("/api/conta", json={"meta_kcal": 2200, "altura_cm": 180, "idade": 30})
+def test_perfil_e_de_cada_um(client: TestClient, client_b: TestClient) -> None:
+    client.patch("/api/conta", json={"altura_cm": 180, "idade": 30})
     conta_b = client_b.get("/api/conta").json()
-    assert (conta_b["meta_kcal"], conta_b["altura_cm"], conta_b["idade"]) == (None, None, None)
+    assert (conta_b["altura_cm"], conta_b["idade"]) == (None, None)
 
 
 def test_nome_escolhido_no_app_fica_depois_de_entrar_de_novo(
@@ -117,7 +112,7 @@ def test_apagar_conta_apaga_tudo_de_verdade(
     assert registros_do_usuario(session, id_a) == 0
     assert session.get(Usuario, id_a) is None
     # O B e o catálogo continuam lá.
-    assert registros_do_usuario(session, id_b) == 6
+    assert registros_do_usuario(session, id_b) == 7
     assert session.get(Exercicio, id_de("exercicio", "agachamento")) is not None
     assert session.get(Ficha, id_de("ficha", "leg-day")) is not None
     # E o token da conta apagada para de funcionar.
