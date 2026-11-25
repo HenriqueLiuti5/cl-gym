@@ -27,7 +27,8 @@ def test_env_gerado_carrega_e_liga_o_login_dev(tmp_path: Path) -> None:
     assert settings.login_dev_ativo
     assert settings.database_url.startswith("sqlite")
     assert "troque" not in settings.sessao_secret
-    assert settings.email_permitido(email_dev(EXEMPLO) or "")
+    # O "Entrar como dev" sugerido é o do admin, que cria a conta sem convite.
+    assert settings.e_admin(email_dev(EXEMPLO) or "")
 
 
 def test_cada_env_gerado_tem_segredo_proprio() -> None:

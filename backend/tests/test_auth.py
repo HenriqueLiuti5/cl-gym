@@ -1,6 +1,5 @@
 import time
 import uuid
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -16,6 +15,7 @@ from backend.tests.conftest import (
     CLIENT_ID,
     EMAIL_A,
     EMAIL_B,
+    Configurar,
     Entrar,
     GerarIdToken,
     configuracao,
@@ -70,28 +70,34 @@ def test_login_preenche_o_nome_que_faltava(
     assert com_nome.json()["usuario"]["nome"] == "Ana"
 
 
-def test_email_nao_convidado_e_recusado(anonimo: TestClient, id_token_google: GerarIdToken) -> None:
+def test_conta_nova_sem_convite_e_recusada(
+    anonimo: TestClient, id_token_google: GerarIdToken
+) -> None:
     resposta = anonimo.post(
-        "/api/auth/google", json={"id_token": id_token_google(email="estranho@exemplo.com")}
+        "/api/auth/google",
+        json={"id_token": id_token_google(email="estranho@exemplo.com", sub="sub-estranho")},
     )
     assert resposta.status_code == 403
-    assert "convidado" in resposta.json()["detail"]
+    assert resposta.headers["X-Motivo"] == "sem-convite"
+    assert "convite" in resposta.json()["detail"]
 
 
-def test_lista_de_convites_vazia_recusa_todo_mundo(
-    anonimo: TestClient, id_token_google: GerarIdToken, convidar: Callable[[str], None]
+def test_sem_admin_ninguem_cria_conta_sem_convite(
+    anonimo: TestClient, id_token_google: GerarIdToken, configurar: Configurar
 ) -> None:
-    convidar("")
+    configurar(admin_email="")
     resposta = anonimo.post("/api/auth/google", json={"id_token": id_token_google()})
     assert resposta.status_code == 403
+    assert resposta.headers["X-Motivo"] == "sem-convite"
 
 
-def test_convite_ignora_maiusculas_e_espacos(
-    anonimo: TestClient, id_token_google: GerarIdToken, convidar: Callable[[str], None]
+def test_admin_ignora_maiusculas_e_espacos(
+    anonimo: TestClient, id_token_google: GerarIdToken, configurar: Configurar
 ) -> None:
-    convidar(f"  {EMAIL_A.upper()} , {EMAIL_B}")
+    configurar(admin_email=f"  {EMAIL_A.upper()} ")
     resposta = anonimo.post("/api/auth/google", json={"id_token": id_token_google()})
     assert resposta.status_code == 200
+    assert resposta.json()["usuario"]["admin"] is True
 
 
 @pytest.mark.parametrize(
@@ -188,27 +194,23 @@ def test_id_token_do_google_nao_serve_como_sessao(
 
 def test_token_de_usuario_inexistente_e_recusado(anonimo: TestClient) -> None:
     token, _ = criar_token_sessao(uuid.uuid4(), configuracao())
-    assert anonimo.get("/api/sync", headers=com_token(token)).status_code == 401
+    resposta = anonimo.get("/api/sync", headers=com_token(token))
+    assert resposta.status_code == 401
+    # O app sai da conta e explica que ela foi apagada.
+    assert resposta.headers["X-Motivo"] == "conta-apagada"
 
 
-def test_email_tirado_da_lista_perde_o_acesso(
-    anonimo: TestClient,
-    entrar: Entrar,
-    id_token_google: GerarIdToken,
-    convidar: Callable[[str], None],
-) -> None:
-    token = entrar()
-    assert anonimo.get("/api/sync", headers=com_token(token)).status_code == 200
+def test_token_invalido_nao_tem_motivo(anonimo: TestClient) -> None:
+    # Sessão vencida ou token estranho: o app só pede para entrar de novo.
+    resposta = anonimo.get("/api/sync", headers=com_token("token-errado"))
+    assert resposta.status_code == 401
+    assert "X-Motivo" not in resposta.headers
 
-    convidar(EMAIL_B)
-    # O token continua válido, mas o acesso foi removido: nem sync, nem novo login.
-    assert anonimo.get("/api/sync", headers=com_token(token)).status_code == 403
-    assert anonimo.post("/api/sync", headers=com_token(token), json={}).status_code == 403
-    login = anonimo.post("/api/auth/google", json={"id_token": id_token_google()})
-    assert login.status_code == 403
 
-    convidar(f"{EMAIL_A},{EMAIL_B}")
-    assert anonimo.get("/api/sync", headers=com_token(token)).status_code == 200
+def test_conta_mostra_se_e_admin(entrar: Entrar, anonimo: TestClient) -> None:
+    assert anonimo.get("/api/conta", headers=com_token(entrar())).json()["admin"] is True
+    token_b = entrar(EMAIL_B, "sub-bruno")
+    assert anonimo.get("/api/conta", headers=com_token(token_b)).json()["admin"] is False
 
 
 # --- Fichas modelo no primeiro login --------------------------------------------------------

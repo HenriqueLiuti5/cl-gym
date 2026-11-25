@@ -23,8 +23,17 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
 
 ## What the app does
 
-- **Sign in with Google**, invite-only (an e-mail allow list). Each person only ever sees their own
-  data; on first sign-in they get a copy of the template plans, which they can then edit.
+- **Sign in with Google**, invite-only. The admin generates a one-time invite in the app: a link
+  plus an 8-character code (no look-alike characters), valid for 24 hours and for one person. The
+  friend opens the link, types the code and signs in; the invite is consumed in the same
+  transaction that creates the account. Each person only ever sees their own data; on first
+  sign-in they get a copy of the template plans, which they can then edit.
+- **Admin screen** (only for the `ADMIN_EMAIL` account): who uses the app and how (last seen,
+  phone or computer, installed app or browser, workout counts), never anyone's weight, food or
+  loads. The admin can block an account (reversible: the person is signed out on the next sync)
+  or delete it for real, and manages the invites (share the link, copy the code, cancel).
+- **Install button before signing in:** the native install prompt on Android and desktop Chrome,
+  or illustrated steps for the iPhone (Share, then "Add to Home Screen" in Safari).
 - **Plans** with one rep target per exercise (never a range), a warm-up flag on the first exercise,
   supersets, and up to two alternatives per exercise ("Plan B"). Every exercise keeps its own load
   history, including the alternatives.
@@ -68,9 +77,11 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
   logged during a workout go up together at the end. Never on a timer, to stay within free-tier
   limits, and with no connection the app does not even try.
 - **Auth.** `POST /api/auth/google` verifies the Google ID token (signature, audience,
-  `email_verified`) against the invite list and returns a long-lived session token signed by the
-  server, so the app keeps working after days offline. Every route except `/api/health` requires
-  `Authorization: Bearer <session token>`.
+  `email_verified`) and lets in an existing account, the admin e-mail, or a new person with a
+  valid invite code. It returns a long-lived session token signed by the server, so the app keeps
+  working after days offline. Apart from `/api/health`, sign-in and the public invite check, every
+  route requires `Authorization: Bearer <session token>`. A blocked or deleted account gets a
+  403 or 401 with an `X-Motivo` header, and the app signs out (local data stays on the phone).
 - **Per-user data.** The server stamps every record with the user from the token. Downloads only
   return that user's records plus the shared exercise catalog; changing someone else's record (or
   the catalog) is refused with **403**, and pointing to it counts as missing (**409**).
@@ -103,10 +114,11 @@ uv run uvicorn backend.main:app --reload    # http://localhost:8000/api/docs
 npm --prefix frontend run dev               # http://localhost:5173, proxies /api to the backend
 ```
 
-The sign-in screen offers a development login (any e-mail from `EMAILS_PERMITIDOS`), so you do
-not need a Google client ID locally. It only works with SQLite and outside Vercel; in production
-the route answers 404. To see the progress screen full, fill that account with 20 weeks of made-up
-data (workouts with progression, weight, food, water and goals):
+The sign-in screen offers a development login (the `ADMIN_EMAIL` account, any account that
+already exists, or a new one with an invite code), so you do not need a Google client ID locally.
+It only works with SQLite and outside Vercel; in production the route answers 404. To see the
+progress screen full, fill that account with 20 weeks of made-up data (workouts with progression,
+weight, food, water and goals), plus a few example friends and invites for the admin screen:
 
 ```bash
 uv run python -m backend.dados_dev
@@ -129,4 +141,6 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 - [x] Offline-first PWA
 - [x] Progress screen with goals, fun facts, carbs and water
 - [x] Redesign: plain phone-native look, light and dark themes, no emojis
-- [ ] Deploy (Vercel + Neon) and invites
+- [x] Deploy on Vercel (function in São Paulo) with Neon Postgres in the same region
+- [x] Admin screen: one-time invites (link + code, 24 hours), activity, block and delete
+- [x] Install button before signing in (native prompt or iPhone steps)

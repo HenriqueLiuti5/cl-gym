@@ -29,8 +29,9 @@ class Settings(DatabaseSettings):
     google_client_id: str = Field(min_length=1)
     # Chave que assina os tokens de sessão do app. Trocar desloga todo mundo.
     sessao_secret: str = Field(min_length=32)
-    # Convites: e-mails separados por vírgula. Tirar um e-mail daqui bloqueia o acesso.
-    emails_permitidos: str = ""
+    # E-mail Google do administrador: entra sem convite, gera os convites e vê a área de
+    # administração. Vazio = ninguém é admin (e só quem já tem conta consegue entrar).
+    admin_email: str = ""
     sessao_dias: int = Field(default=90, ge=1, le=365)
     # Login sem Google, só para desenvolvimento local (veja `login_dev_ativo`).
     login_dev: bool = False
@@ -44,14 +45,9 @@ class Settings(DatabaseSettings):
             and not os.environ.get("VERCEL")
         )
 
-    @property
-    def emails(self) -> frozenset[str]:
-        return frozenset(
-            email.strip().lower() for email in self.emails_permitidos.split(",") if email.strip()
-        )
-
-    def email_permitido(self, email: str) -> bool:
-        return email.strip().lower() in self.emails
+    def e_admin(self, email: str) -> bool:
+        admin = self.admin_email.strip().lower()
+        return bool(admin) and email.strip().lower() == admin
 
 
 @lru_cache

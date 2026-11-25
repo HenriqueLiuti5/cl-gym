@@ -54,7 +54,7 @@ uv run scripts/preparar.py                # computador novo (veja acima)
 uv sync                                   # instala dependências
 uv run alembic upgrade head               # cria/atualiza o banco local (clgym.db)
 uv run python -m backend.seed             # carrega backend/data/treino.toml no banco
-uv run python -m backend.dados_dev        # enche a conta do "Entrar como dev" com meses de dados
+uv run python -m backend.dados_dev        # meses de dados na conta de dev + amigos e convites de exemplo
 uv run uvicorn backend.main:app --reload  # API em http://localhost:8000 (docs em /api/docs)
 uv run pytest                             # testes
 uv run ruff check . && uv run ruff format .
@@ -67,8 +67,9 @@ para tirar ou mudar coluna, e apagar uma tabela referenciada falharia) e confere
 `PRAGMA foreign_key_check` no fim (`backend/migrations/env.py`).
 
 O `backend.dados_dev` só roda em SQLite: gera 20 semanas inventadas (treinos com progressão e
-Plano B, peso caindo, calorias, proteína, carbo, água e metas, uma delas já alcançada) na mesma
-conta do "Entrar como dev". Pode rodar de novo; não mexe no que foi lançado à mão.
+Plano B, peso caindo, calorias, proteína, carbo, água e metas, uma delas já alcançada) na conta do
+"Entrar como dev" (o `ADMIN_EMAIL`), e uns amigos de exemplo (um bloqueado) e convites, para a tela
+de administração. Pode rodar de novo; não mexe no que foi lançado à mão.
 
 ```bash
 cd frontend
@@ -79,12 +80,13 @@ npm run build                             # gera frontend/dist com o service wor
 ```
 
 Para testar o app sem um `GOOGLE_CLIENT_ID` de verdade, ponha `LOGIN_DEV=1` no `.env`: a tela de
-login mostra "Entrar como dev" (com um e-mail de `EMAILS_PERMITIDOS`). Isso só funciona com banco
+login mostra "Entrar como dev" (com o `ADMIN_EMAIL`, uma conta que já existe ou um código de
+convite, como no login de verdade). Isso só funciona com banco
 SQLite e fora da Vercel (`VERCEL` no ambiente); em produção `/api/auth/dev` responde 404. O
 `.claude/launch.json` tem os servidores `api` e `app` para o painel de navegador do Claude Code.
 
 Configuração via `.env` (veja `.env.example`): `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `SESSAO_SECRET`
-(mínimo 32 caracteres), `EMAILS_PERMITIDOS` (separados por vírgula) e, opcional, `SESSAO_DIAS`
+(mínimo 32 caracteres), `ADMIN_EMAIL` (o e-mail do administrador) e, opcional, `SESSAO_DIAS`
 (padrão 90) e `LOGIN_DEV` (só local). As migrações e o seed só precisam do `DATABASE_URL`.
 
 ## Estrutura
@@ -101,6 +103,9 @@ backend/
   sync.py               lógica de envio/download, separada por usuário
   routers/auth.py       GET /api/auth/config, POST /api/auth/google, POST /api/auth/dev (só local)
   routers/conta.py      GET/PATCH/DELETE /api/conta (perfil; apagar a conta)
+  convites.py           código do convite (gerar, normalizar, situação) e o uso na criação da conta
+  routers/convites.py   GET /api/convites/{id} e POST /api/convites/verificar (sem login)
+  routers/admin.py      /api/admin/usuarios e /api/admin/convites (só o ADMIN_EMAIL)
   routers/sync.py       GET/POST /api/sync
   seed.py               carrega o catálogo do TOML
   dados_dev.py          dados inventados para a conta de dev (só SQLite)
@@ -123,8 +128,13 @@ frontend/
   src/lib/curiosidades.ts      curiosidades com comparações (elefantes, Pão de Açúcar, ovos...)
   src/lib/perfil.ts            perfil (primeiro acesso e Conta): limites, altura, peso atual
   src/lib/ids.ts               UUID v4 e v5 (ids do registro do dia e das metas), sem https
-  src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev), sair
-  src/telas/                   Login, BoasVindas, Inicio, FichaTela, Treino, Dia, Graficos, Conta
+  src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev, com convite), sair
+  src/lib/convite.ts           código do convite (normalizar, formatar, link)
+  src/lib/admin.ts             API e contas da área de administração
+  src/lib/instalar.ts          instalar o app: pedido nativo do Chrome, plataforma, instalado
+  src/telas/                   Login, Convite, BoasVindas, Inicio, FichaTela, Treino, Dia,
+                               Graficos, Conta, Admin
+  src/componentes/Instalar.tsx botão e linha "Instalar o app" (com as instruções do iPhone)
   src/componentes/ui.tsx       peças de tela: botão, lista agrupada, linha com campo, segmentos,
                                aviso, janela (Modal) e Confirmar
   src/componentes/icones.tsx   ícones em SVG (traço simples, desenhados no projeto)
@@ -163,9 +173,12 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
 - **Sem internet** (`navigator.onLine` falso) o app nem tenta e não mostra aviso: tudo fica no
   celular até a próxima vez. A faixa no topo só aparece em erro de verdade.
 - Erro 5xx ou falta de rede contam como "sem internet": tudo fica no celular. 401 pede login de
-  novo sem apagar os dados locais. O app valida os mesmos limites do servidor (ex.: carga até
+  novo sem apagar os dados locais; o mesmo para 403 com `X-Motivo: bloqueado` (conta bloqueada
+  pelo admin), e a tela de login explica o motivo (`X-Motivo: conta-apagada` no 401 de conta que
+  não existe mais). O app valida os mesmos limites do servidor (ex.: carga até
   1000 kg), porque um registro recusado (422) travaria os envios seguintes.
-- Todas as rotas exceto `/api/health` e `/api/auth/google` exigem `Authorization: Bearer <token
+- Todas as rotas exceto `/api/health`, as de login (`/api/auth/*`) e as públicas do convite
+  (`GET /api/convites/{id}` e `POST /api/convites/verificar`) exigem `Authorization: Bearer <token
   de sessão>`. O envio e o download só enxergam os registros do usuário (veja abaixo).
 - **Isolamento:** o servidor grava o `usuario_id` do token (ignora o que vier do app). O download
   traz os registros do usuário e os exercícios do catálogo. No envio, alterar registro de outro
@@ -184,7 +197,12 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
   `criado_em` e o perfil, todo opcional: `nome` (vem do Google no primeiro login; depois é a
   pessoa quem muda, e o login não troca mais), `altura_cm` (50–250) e `idade` (10–120). O peso
   atual não fica aqui (veja "Perfil"), nem as metas (tabela `Meta`, que sincroniza e funciona
-  offline).
+  offline). Atividade, só para a administração: `visto_em` (última chamada autenticada, gravada
+  no máximo a cada 60 s), `aparelho` (iPhone, iPad, Android ou Computador, pelo User-Agent),
+  `instalado` (cabeçalho `X-App-Instalado` do app) e `bloqueado_em`.
+- **Convite** (não sincroniza): `codigo` (8 caracteres de `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, sem
+  0/O e 1/I/L, único; mostrado como `XXXX-XXXX`), `criado_em`, `expira_em` (24 h), `usado_em`,
+  `usado_por` e `cancelado_em`. Situação: cancelado, usado, expirado ou válido.
 - **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT) e midia_url (GIF
   ou vídeo). Os do catálogo vêm do seed e só o seed altera; cada um pode criar os seus. É o único
   download que traz `usuario_id` (nulo = catálogo, só leitura no app).
@@ -284,16 +302,36 @@ mudar à vontade (nova migração, sem migrar dados).
 
 ### Login e convites
 - **Entrar com Google.** O frontend usa o Google Identity Services e recebe um *ID token*. O
-  backend (`POST /api/auth/google`) confere a assinatura, o `aud` (= `GOOGLE_CLIENT_ID`),
-  `email_verified` e se o e-mail está em `EMAILS_PERMITIDOS` (lista separada por vírgula). Não tem
-  senha nem envio de e-mail.
+  backend (`POST /api/auth/google`) confere a assinatura, o `aud` (= `GOOGLE_CLIENT_ID`) e o
+  `email_verified`. Não tem senha nem envio de e-mail.
 - Aprovado, o backend cria (ou acha) o **Usuario** pelo `sub` do Google e devolve um **token de
   sessão próprio**, assinado com `SESSAO_SECRET`, de longa duração (uns 90 dias). Ele fica no
   aparelho e permite usar e sincronizar sem pedir o Google de novo, inclusive depois de ficar
   offline.
-- **Só entra convidado.** Para chamar um amigo, o Henrique adiciona o e-mail em
-  `EMAILS_PERMITIDOS` na Vercel e faz redeploy. Isso impede que estranhos gastem o limite grátis.
-- Remover um e-mail da lista bloqueia novos logins e a sincronização daquele usuário.
+- **Só entra convidado** (decidido em 25/11/2026, no lugar da lista `EMAILS_PERMITIDOS`): entra
+  quem já tem conta, o `ADMIN_EMAIL` (cria a conta sem convite) ou quem traz um **código de
+  convite** válido. O convite é gerado pelo admin no app, vale **24 h** e para **uma pessoa**
+  (qualquer uma que receber o link). A pessoa abre o link (`#/convite/<id>`), **digita o código**
+  e entra com o Google; o convite é consumido na mesma transação que cria a conta. Sem o link
+  (no app instalado do iPhone, que não enxerga o Safari), o código entra em "Tenho um convite" no
+  login, por isso ele é longo o bastante para não ser adivinhado. Isso impede que estranhos
+  gastem o limite grátis.
+- Erros do login com motivo no cabeçalho `X-Motivo`: `sem-convite`, `convite-invalido` e
+  `bloqueado`.
+
+### Administração (decidido em 25/11/2026)
+- Só para a conta do `ADMIN_EMAIL` (variável da Vercel; o e-mail não entra no repositório). No app,
+  linha "Administração" no topo da aba Conta (`#/admin`), com Usuários e Convites. O servidor
+  confere o admin em toda rota (`/api/admin/*`; outra conta recebe 403).
+- **Usuários: só atividade**, nunca peso, alimentação, metas ou cargas: nome, e-mail, desde
+  quando usa, visto por último ("ativo agora" = há menos de 10 min), aparelho e se instalou o
+  app, treinos (total, últimos 30 dias e o último). Sem "treinando agora": exigiria sincronizar
+  no início do treino, e a regra de sincronização ficou como está.
+- **Bloquear** (reversível): a pessoa sai na próxima vez que o app falar com o servidor e não
+  entra de novo; os dados ficam. **Excluir**: apaga tudo, como "Apagar minha conta" (confirmação
+  digitando "apagar"). O admin não bloqueia nem exclui a si mesmo.
+- **Convites:** gerar, enviar o link (compartilhar do celular) e o código, cancelar. O código fica
+  visível para o admin até ser usado, expirar ou ser cancelado.
 
 ### Dados por usuário
 - Nova tabela **Usuario**: `id`, `google_sub` (único), `email`, `nome`, `criado_em` e o perfil
@@ -369,9 +407,11 @@ mudar à vontade (nova migração, sem migrar dados).
 - **iPhone:** tem que ser no **Safari**, botão de compartilhar → "Adicionar à Tela de Início".
 - O app pede `navigator.storage.persist()`, porque o iPhone pode apagar os dados locais de sites
   pouco usados. A sincronização com o servidor é a garantia.
-- **Sem tela "Como instalar"** no app (decidido em 24/11/2026): ao abrir o link, o navegador já
-  oferece instalar. No iPhone o Safari não mostra esse botão, então quem tiver iPhone precisa do
-  passo acima junto com o link.
+- **Botão "Instalar o app" antes de entrar** (decidido em 25/11/2026, no lugar de "sem tela de
+  instalar"): nas telas de login e de convite, e numa linha da Conta quando aberto no navegador.
+  Com o pedido nativo (`beforeinstallprompt`, Android e computador com Chrome), abre o do
+  navegador; sem ele, mostra os passos (iPhone: Safari → Compartilhar → "Adicionar à Tela de
+  Início"; Android: menu ⋮ → "Instalar app"). Some no app instalado.
 - Atualização automática do service worker na próxima abertura com internet.
 
 ### Ordem de trabalho
@@ -390,7 +430,6 @@ mudar à vontade (nova migração, sem migrar dados).
 - Botão "copiar a semana" que gera um texto com os treinos, cargas, peso e kcal, para o Henrique
   colar no Claude e atualizar o vault.
 - Timer de descanso.
-- Convites por tela de admin em vez de variável de ambiente.
 
 ## Deploy (feito em 25/11/2026)
 
@@ -407,7 +446,7 @@ dele.
 2. **Variáveis de produção** ficam no `.env.producao` da máquina do Henrique (fora do Git; o
    `.gitignore` ignora `.env.*` menos o `.env.example`): `DATABASE_URL` (Neon, URL **pooled**, com
    `-pooler` no host), `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` (própria da produção, diferente da de
-   dev) e `EMAILS_PERMITIDOS`. Na Vercel, cola-se o arquivo inteiro em Environment Variables.
+   dev) e `ADMIN_EMAIL`. Na Vercel, cola-se o arquivo inteiro em Environment Variables.
    Nunca definir `LOGIN_DEV` na Vercel (lá ele já não funciona, mas não precisa estar).
 3. **Migrações e seed no Neon**, da máquina local, pela URL **direta** (a mesma sem `-pooler`: o
    PgBouncer do pooler atrapalha DDL). Nunca imprimir a URL, que tem a senha:
@@ -421,7 +460,10 @@ dele.
    pacote da função o que ela não usa (`excludeFiles`: o Python não tem tree-shaking). As
    dependências Python saem do `pyproject.toml` + `uv.lock` (a Vercel instala com uv).
 5. Conferir `https://cl-gym.vercel.app/api/health` e `/api/auth/config`, entrar com o Google e
-   mandar o link aos amigos (com o e-mail deles em `EMAILS_PERMITIDOS` e redeploy).
+   convidar os amigos pela Administração (link + código, sem redeploy).
+6. Mudança de banco: rodar a migração no Neon (passo 3) **antes** do push que a usa, porque cada
+   push na `main` publica sozinho. As migrações são aditivas, então o código antigo segue
+   funcionando com o banco já migrado.
 
 ## Status
 
@@ -437,4 +479,7 @@ dele.
   de exemplo para a conta de dev (24/11/2026)
 - [x] Redesenho: visual simples e profissional, sem emojis, tema claro e escuro (24/11/2026)
 - [x] Deploy na Vercel (função em `gru1`) + Neon em São Paulo, migrações e seed (25/11/2026)
-- [ ] Primeiro login com Google em produção, instalação nos celulares e convite dos amigos
+- [x] Administração (usuários com atividade, bloquear, excluir) e convites por link + código no
+  lugar do `EMAILS_PERMITIDOS`; botão de instalar antes de entrar (25/11/2026)
+- [x] Primeiro login com Google em produção (25/11/2026)
+- [ ] Instalação nos celulares e convite dos amigos

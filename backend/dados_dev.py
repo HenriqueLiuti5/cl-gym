@@ -5,8 +5,9 @@ alimentação, água e metas), para ver a tela de Evolução cheia sem treinar d
     uv run python -m backend.dados_dev --email x@exemplo.com --semanas 26
 
 Só roda em banco SQLite (o local) e usa a mesma identidade do "Entrar como dev" (`dev:<e-mail>`):
-por padrão, o primeiro e-mail de `EMAILS_PERMITIDOS`. Os números saem de uma semente fixa e não
-são de ninguém de verdade.
+por padrão, o `ADMIN_EMAIL`. Os números saem de uma semente fixa e não são de ninguém de verdade.
+Também cria três contas de amigos de exemplo (com atividade variada, uma delas bloqueada) e dois
+convites, para a área de administração ter o que mostrar.
 
 Pode rodar de novo: os treinos gerados são regravados (mesmos ids e versão nova; o que sobrar de
 uma rodada anterior vira excluído) e o app baixa tudo na próxima sincronização. O que não foi
@@ -26,7 +27,9 @@ from sqlmodel import Session, col, select
 
 from backend.auth import IdentidadeGoogle
 from backend.conta import copiar_fichas_modelo, entrar
+from backend.convites import VALIDADE
 from backend.models import (
+    Convite,
     Exercicio,
     Ficha,
     FichaExercicio,
@@ -416,19 +419,133 @@ def gerar(session: Session, email: str, semanas: int = 20, semente: int = 7) -> 
     return gerador.resumo
 
 
+@dataclass(frozen=True)
+class Amigo:
+    """Conta de exemplo para a área de administração (só atividade; ninguém de verdade)."""
+
+    email: str
+    nome: str
+    entrou_ha: timedelta
+    visto_ha: timedelta
+    aparelho: str
+    instalado: bool
+    bloqueado_ha: timedelta | None
+    # Há quantos dias terminou cada treino.
+    treinos: tuple[int, ...]
+
+
+AMIGOS = (
+    Amigo(
+        "marina@exemplo.com",
+        "Marina",
+        timedelta(days=41),
+        timedelta(minutes=3),
+        "iPhone",
+        True,
+        None,
+        (1, 3, 5, 8, 10, 12, 15, 17, 22, 26, 33, 38),
+    ),
+    Amigo(
+        "rafael@exemplo.com",
+        "Rafael",
+        timedelta(days=24),
+        timedelta(days=4),
+        "Android",
+        False,
+        None,
+        (4, 9, 13, 20),
+    ),
+    Amigo(
+        "bruno@exemplo.com",
+        "Bruno",
+        timedelta(days=60),
+        timedelta(days=11),
+        "Computador",
+        False,
+        timedelta(days=2),
+        (35, 50),
+    ),
+)
+# Códigos fixos (do alfabeto dos convites) para rodar de novo sem criar outros.
+CONVITE_VALIDO = ("K7QMX4PD", uuid.uuid5(NAMESPACE_GERADOS, "convite-valido"))
+CONVITE_USADO = ("H3RTW9ZB", uuid.uuid5(NAMESPACE_GERADOS, "convite-usado"))
+
+
+def gerar_amigos(session: Session) -> tuple[int, int]:
+    """Cria (ou atualiza) as contas de exemplo e dois convites: um que ainda vale e um que a
+    Marina usou. As contas usam a identidade do "Entrar como dev" (`dev:<e-mail>`): dá para
+    entrar como elas (o Bruno está bloqueado). Devolve (contas, convites)."""
+    agora = datetime.now(UTC)
+    versao = proxima_versao(session)
+    contas: dict[str, Usuario] = {}
+    for amigo in AMIGOS:
+        usuario, _ = entrar(
+            session, IdentidadeGoogle(f"dev:{amigo.email}", amigo.email, amigo.nome)
+        )
+        usuario.altura_cm = usuario.altura_cm or 172
+        usuario.idade = usuario.idade or 27
+        usuario.criado_em = agora - amigo.entrou_ha
+        usuario.visto_em = agora - amigo.visto_ha
+        usuario.aparelho = amigo.aparelho
+        usuario.instalado = amigo.instalado
+        usuario.bloqueado_em = agora - amigo.bloqueado_ha if amigo.bloqueado_ha else None
+        fichas = session.exec(
+            select(Ficha).where(Ficha.usuario_id == usuario.id).order_by(col(Ficha.ordem))
+        ).all()
+        for n, dias in enumerate(amigo.treinos):
+            fim = agora - timedelta(days=dias)
+            session.merge(
+                Sessao(
+                    id=id_gerado(usuario.id, "treino-amigo", n),
+                    usuario_id=usuario.id,
+                    versao=versao,
+                    atualizado_em=agora,
+                    excluido=False,
+                    ficha_id=fichas[n % len(fichas)].id if fichas else None,
+                    iniciada_em=fim - timedelta(minutes=58),
+                    finalizada_em=fim,
+                )
+            )
+        contas[amigo.email] = usuario
+
+    marina = contas["marina@exemplo.com"]
+    codigo, convite_id = CONVITE_VALIDO
+    session.merge(
+        Convite(
+            id=convite_id,
+            codigo=codigo,
+            criado_em=agora - timedelta(hours=1),
+            expira_em=agora - timedelta(hours=1) + VALIDADE,
+        )
+    )
+    codigo, convite_id = CONVITE_USADO
+    session.merge(
+        Convite(
+            id=convite_id,
+            codigo=codigo,
+            criado_em=marina.criado_em - timedelta(hours=2),
+            expira_em=marina.criado_em - timedelta(hours=2) + VALIDADE,
+            usado_em=marina.criado_em,
+            usado_por=marina.id,
+        )
+    )
+    session.commit()
+    return len(contas), 2
+
+
 def _email_padrao() -> str | None:
     from backend.config import Settings
 
     try:
-        primeiro = Settings().emails_permitidos.split(",")[0].strip()
+        admin = Settings().admin_email.strip()
     except ValueError:
         return None
-    return primeiro or None
+    return admin or None
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--email", help="conta (padrão: o 1º de EMAILS_PERMITIDOS)")
+    parser.add_argument("--email", help="conta (padrão: o ADMIN_EMAIL)")
     parser.add_argument("--semanas", type=int, default=20, help="quantas semanas para trás")
     parser.add_argument("--semente", type=int, default=7, help="muda os números sorteados")
     args = parser.parse_args(argv)
@@ -441,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     email = (args.email or _email_padrao() or "").strip().lower()
     if not email:
-        print("Informe a conta com --email (ou EMAILS_PERMITIDOS no .env).", file=sys.stderr)
+        print("Informe a conta com --email (ou ADMIN_EMAIL no .env).", file=sys.stderr)
         return 1
     if not 1 <= args.semanas <= 104:
         print("--semanas vai de 1 a 104.", file=sys.stderr)
@@ -449,6 +566,7 @@ def main(argv: list[str] | None = None) -> int:
 
     with Session(get_engine()) as session:
         resumo = gerar(session, email, args.semanas, args.semente)
+        amigos, convites = gerar_amigos(session)
     print(
         f"{email}: {resumo.treinos} treinos ({resumo.series} séries), "
         f"{resumo.registros} registros do dia e {resumo.metas} metas novas"
@@ -458,6 +576,7 @@ def main(argv: list[str] | None = None) -> int:
             else "."
         )
     )
+    print(f"Área de administração: {amigos} contas de amigos de exemplo e {convites} convites.")
     print("No app, toque em Sincronizar (aba Conta) ou recarregue a página.")
     return 0
 

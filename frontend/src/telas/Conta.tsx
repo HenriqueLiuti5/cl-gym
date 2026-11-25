@@ -1,11 +1,12 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { FormularioPerfil } from "../componentes/FormularioPerfil";
 import { Icone } from "../componentes/icones";
+import { LinhaInstalar } from "../componentes/Instalar";
 import { Aviso, Botao, Campo, Cartao, Confirmar, estiloEntrada, estiloEntradaLinha, Grupo, Linha, LinhaCampo, Modal, Titulo } from "../componentes/ui";
 import { api, ErroApi } from "../lib/api";
-import { db } from "../lib/db";
+import { db, gravarMeta } from "../lib/db";
 import { pontosDePeso } from "../lib/estatisticas";
 import { formatarData, lerNumero } from "../lib/formato";
 import { acharMeta, daTela, paraTela, removerMeta, salvarMeta, validarMeta } from "../lib/metas";
@@ -166,12 +167,43 @@ function ApagarConta({ fechar }: { fechar: () => void }) {
   );
 }
 
+/** Entrada da área de administração (só para a conta do ADMIN_EMAIL). */
+function LinhaAdministracao() {
+  return (
+    <Grupo>
+      <a href="#/admin" className="flex min-h-12 w-full items-center gap-3 px-4 py-3 active:bg-campo">
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-acento-suave text-acento">
+          <Icone nome="escudo" className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[17px]">Administração</span>
+          <span className="mt-0.5 block text-[14px] leading-snug text-texto-2">Usuários e convites</span>
+        </span>
+        <Icone nome="avancar" className="-mr-1 h-5 w-5 text-texto-3" />
+      </a>
+    </Grupo>
+  );
+}
+
 export function Conta({ usuario }: { usuario: Usuario }) {
   const registros = useLiveQuery(() => db.registros_diarios.toArray(), []);
   const [apagando, setApagando] = useState(false);
   // Quantas alterações ainda não foram enviadas, contadas ao pedir para sair.
   const [saindo, setSaindo] = useState<number | null>(null);
   const nome = usuario.nome?.trim() || usuario.email;
+
+  // Com internet, traz a conta do servidor: chega o "admin" e o nome mudado em outro aparelho
+  // sem precisar sair e entrar. Sem internet fica o que está guardado, sem aviso.
+  useEffect(() => {
+    if (navigator.onLine === false) return;
+    let ativo = true;
+    api<Usuario>("/conta")
+      .then((conta) => (ativo ? gravarMeta("usuario", conta) : undefined))
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   return (
     <div>
@@ -187,11 +219,15 @@ export function Conta({ usuario }: { usuario: Usuario }) {
           </div>
         </Cartao>
 
+        {usuario.admin && <LinhaAdministracao />}
+
         {registros && <FormularioPerfil usuario={usuario} registros={registros} rotulo="Salvar dados" titulo="Seus dados" />}
         <Metas usuario={usuario} />
         <Sincronizar />
 
         <Grupo>
+          {/* Só aparece no navegador (some no app instalado). */}
+          <LinhaInstalar />
           <Linha titulo="Sair desta conta" tom="acento" onClick={() => void contarPendentes().then(setSaindo)} />
           <Linha titulo="Apagar minha conta" tom="perigo" onClick={() => setApagando(true)} />
         </Grupo>

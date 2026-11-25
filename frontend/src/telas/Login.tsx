@@ -1,177 +1,91 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState } from "react";
 
-import { Aviso, Botao, estiloEntrada } from "../componentes/ui";
+import { AvisoSaida, BotaoGoogle, CampoCodigo, FormularioDev, MolduraEntrada } from "../componentes/Entrada";
+import { Icone } from "../componentes/icones";
+import { BotaoInstalar } from "../componentes/Instalar";
+import { Aviso, Botao } from "../componentes/ui";
 import { ErroApi } from "../lib/api";
-import { configLogin, entrarComGoogle, entrarDev, type ConfigLogin } from "../lib/sessao";
+import { formatarCodigo } from "../lib/convite";
+import { lerConvitePendente } from "../lib/convitePendente";
+import { entrarComGoogle, entrarDev, recadoDoErro, useConfigLogin, type Recado } from "../lib/sessao";
+import type { Saida } from "../lib/tipos";
 
-interface GoogleId {
-  initialize(opcoes: { client_id: string; callback: (r: { credential: string }) => void }): void;
-  renderButton(elemento: HTMLElement, opcoes: Record<string, unknown>): void;
-}
-
-declare global {
-  interface Window {
-    google?: { accounts: { id: GoogleId } };
-  }
-}
-
-function carregarGoogle(): Promise<GoogleId> {
-  return new Promise((resolver, rejeitar) => {
-    if (window.google) return resolver(window.google.accounts.id);
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.onload = () =>
-      window.google ? resolver(window.google.accounts.id) : rejeitar(new Error("sem Google"));
-    script.onerror = () => rejeitar(new Error("sem Google"));
-    document.head.appendChild(script);
-  });
-}
-
-function mensagem(erro: unknown): string {
-  if (erro instanceof ErroApi) return erro.message;
-  return "Não deu para entrar. Tente de novo.";
-}
-
-const CHAVE_EMAIL_DEV = "clgym.email_dev";
-
-export function Login({ expirou }: { expirou: boolean }) {
-  const [config, setConfig] = useState<ConfigLogin | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+export function Login({ saida }: { saida?: Saida }) {
+  const { config, erro: erroConfig } = useConfigLogin();
+  const [recado, setRecado] = useState<Recado | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [googlePronto, setGooglePronto] = useState(false);
-  const [emailDev, setEmailDev] = useState(() => localStorage.getItem(CHAVE_EMAIL_DEV) ?? "");
-  const botaoGoogle = useRef<HTMLDivElement>(null);
+  // Depois de tentar entrar, o aviso de por que tinha saído já cumpriu o papel.
+  const [tentou, setTentou] = useState(false);
+  const [convite, setConvite] = useState(() => lerConvitePendente());
+  const [pedirCodigo, setPedirCodigo] = useState(false);
 
-  useEffect(() => {
-    configLogin()
-      .then(setConfig)
-      .catch((e: unknown) => setErro(mensagem(e)));
-  }, []);
-
-  // A barra do navegador acompanha o topo preto da logo enquanto esta tela está aberta.
-  useEffect(() => {
-    const antes = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map(
-      (meta) => [meta, meta.content] as const,
-    );
-    for (const [meta] of antes) meta.content = "#000000";
-    return () => {
-      for (const [meta, cor] of antes) meta.content = cor;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!config || !botaoGoogle.current) return;
-    const alvo = botaoGoogle.current;
-    const temaEscuro = window.matchMedia("(prefers-color-scheme: dark)");
-    let ativo = true;
-    let desenhar: (() => void) | null = null;
-    carregarGoogle()
-      .then((google) => {
-        if (!ativo) return;
-        google.initialize({
-          client_id: config.google_client_id,
-          callback: ({ credential }) => {
-            setCarregando(true);
-            setErro(null);
-            entrarComGoogle(credential)
-              .catch((e: unknown) => setErro(mensagem(e)))
-              .finally(() => setCarregando(false));
-          },
-        });
-        // O botão é do Google (num iframe): só dá para escolher entre as opções dele. Pílula com o
-        // "G" no centro; preto no tema claro (combina com o topo da logo) e branco no escuro, onde o
-        // preto sumiria no fundo.
-        desenhar = () => {
-          alvo.replaceChildren();
-          google.renderButton(alvo, {
-            theme: temaEscuro.matches ? "outline" : "filled_black",
-            size: "large",
-            shape: "pill",
-            logo_alignment: "center",
-            text: "continue_with",
-            locale: "pt-BR",
-            // O botão do Google aceita de 200 a 400 px: ocupa a largura da coluna.
-            width: Math.min(400, Math.max(200, alvo.offsetWidth)),
-          });
-        };
-        desenhar();
-        temaEscuro.addEventListener("change", desenhar);
-        setGooglePronto(true);
-      })
-      .catch(() => setErro("Não deu para carregar o login do Google. Confira a internet."));
-    return () => {
-      ativo = false;
-      if (desenhar) temaEscuro.removeEventListener("change", desenhar);
-    };
-  }, [config]);
-
-  async function entrarComoDev(evento: FormEvent) {
-    evento.preventDefault();
+  async function tentar(entrar: () => Promise<void>) {
     setCarregando(true);
-    setErro(null);
+    setRecado(null);
+    setTentou(true);
     try {
-      await entrarDev(emailDev);
-      localStorage.setItem(CHAVE_EMAIL_DEV, emailDev);
+      await entrar();
     } catch (e) {
-      setErro(mensagem(e));
+      setRecado(recadoDoErro(e));
+      // Sem convite (ou com um que não serve): abre o campo do código.
+      if (e instanceof ErroApi && (e.motivo === "sem-convite" || e.motivo === "convite-invalido")) {
+        setConvite(null);
+        setPedirCodigo(true);
+      }
     } finally {
       setCarregando(false);
     }
   }
 
+  const aviso = recado ?? (erroConfig ? { tipo: "erro" as const, texto: erroConfig } : null);
+
   return (
-    <main className="flex min-h-dvh flex-col bg-black">
-      <div className="flex flex-1 items-center justify-center px-6 pt-[max(env(safe-area-inset-top),2.5rem)] pb-14">
-        <img src="/logo-1024.png" alt="" className="aspect-square w-[min(76vw,40dvh,320px)]" />
+    <MolduraEntrada titulo="CL Gym" frase="Treinos, cargas, peso e alimentação. Funciona mesmo sem internet.">
+      <div className="space-y-3">
+        {!tentou && <AvisoSaida saida={saida} />}
+        {aviso && <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>}
+        {convite && (
+          <Aviso tipo="bom" titulo={`Convite ${formatarCodigo(convite.codigo)} conferido.`}>
+            Agora entre com o Google para criar sua conta.
+          </Aviso>
+        )}
+        <BotaoGoogle
+          clientId={config?.google_client_id ?? null}
+          aoEntrar={(credencial) => void tentar(() => entrarComGoogle(credencial))}
+          aoFalhar={(texto) => setRecado({ tipo: "erro", texto })}
+        />
+        <p className="text-center text-[13px] text-texto-3" aria-live="polite">
+          {carregando ? "Entrando…" : "Só entra quem foi convidado."}
+        </p>
       </div>
 
-      <div className="-mt-7 rounded-t-[28px] bg-fundo px-6 pt-8 pb-[max(env(safe-area-inset-bottom),2rem)]">
-        <div className="mx-auto max-w-sm">
-          <h1 className="text-center text-[30px] leading-tight font-bold">CL Gym</h1>
-          <p className="mx-auto mt-1.5 max-w-xs text-center text-[17px] leading-snug text-texto-2">
-            Treinos, cargas, peso e alimentação. Funciona mesmo sem internet.
-          </p>
-
-          <div className="mt-7 space-y-3">
-            {expirou && <Aviso tipo="info">Sua sessão acabou. Entre de novo; nada do que está no celular se perdeu.</Aviso>}
-            {erro && <Aviso tipo="erro">{erro}</Aviso>}
-            <div className="relative min-h-10">
-              {/* Lugar do botão enquanto o script do Google carrega, para a tela não pular. */}
-              {!googlePronto && !erro && <div className="absolute inset-x-0 top-0 h-10 rounded-full bg-campo" />}
-              {/* Esquema claro no lugar do iframe: com o do app (escuro), o Chrome pinta um fundo
-                  branco atrás da pílula do Google. */}
-              <div ref={botaoGoogle} className="relative flex w-full justify-center [color-scheme:light]" />
-            </div>
-            <p className="text-center text-[13px] text-texto-3" aria-live="polite">
-              {carregando ? "Entrando…" : "Só entra quem foi convidado."}
-            </p>
+      {!convite &&
+        (pedirCodigo ? (
+          <div className="mt-5">
+            <CampoCodigo
+              rotulo="Conferir"
+              aoConfirmar={(novo) => {
+                setConvite(novo);
+                setPedirCodigo(false);
+                setRecado(null);
+              }}
+              aoCancelar={() => setPedirCodigo(false)}
+            />
           </div>
+        ) : (
+          <div className="mt-1 text-center">
+            <Botao variante="fantasma" tamanho="pequeno" onClick={() => setPedirCodigo(true)}>
+              <Icone nome="convite" className="h-4.5 w-4.5" />
+              Tenho um convite
+            </Botao>
+          </div>
+        ))}
 
-          {config?.login_dev && (
-            <form className="mt-8 border-t border-linha pt-5" onSubmit={entrarComoDev}>
-              <h2 className="text-[13px] font-semibold text-texto-2">Login de desenvolvimento</h2>
-              <p className="mt-0.5 text-[13px] text-texto-3">Só neste computador; em produção não existe.</p>
-              <div className="mt-3 flex gap-2">
-                <input
-                  className={`${estiloEntrada} min-w-0 flex-1`}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  aria-label="E-mail convidado"
-                  placeholder="E-mail convidado"
-                  value={emailDev}
-                  onChange={(e) => setEmailDev(e.target.value)}
-                />
-                <Botao type="submit" className="shrink-0" disabled={!emailDev || carregando}>
-                  Entrar
-                </Botao>
-              </div>
-            </form>
-          )}
-        </div>
+      <div className="mt-6">
+        <BotaoInstalar />
       </div>
-    </main>
+
+      {config?.login_dev && <FormularioDev ocupado={carregando} aoEntrar={(email) => void tentar(() => entrarDev(email))} />}
+    </MolduraEntrada>
   );
 }

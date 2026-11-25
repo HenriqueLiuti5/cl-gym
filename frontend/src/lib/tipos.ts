@@ -84,6 +84,15 @@ export interface Usuario {
   criado_em: string;
   altura_cm: number | null;
   idade: number | null;
+  /** Só a conta do ADMIN_EMAIL (variável da Vercel) vê a área de administração. */
+  admin?: boolean;
+}
+
+/** Por que o app saiu da conta sozinho (meta "saida"); a tela de login explica. */
+export interface Saida {
+  motivo: "sessao-expirada" | "conta-apagada" | "bloqueado";
+  /** Frase do servidor, quando houver. */
+  mensagem?: string;
 }
 
 export const TABELAS = [

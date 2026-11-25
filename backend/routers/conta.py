@@ -1,26 +1,33 @@
-from fastapi import APIRouter, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, status
 
 from backend.auth import UsuarioAtual
-from backend.conta import apagar_conta
+from backend.config import Settings, get_settings
+from backend.conta import apagar_conta, usuario_out
 from backend.db import SessionDep
 from backend.models import Perfil, UsuarioOut
 
 router = APIRouter(prefix="/api/conta", tags=["conta"])
 
+ConfigDep = Annotated[Settings, Depends(get_settings)]
+
 
 @router.get("")
-def ver_conta(usuario: UsuarioAtual) -> UsuarioOut:
-    return UsuarioOut.model_validate(usuario, from_attributes=True)
+def ver_conta(usuario: UsuarioAtual, settings: ConfigDep) -> UsuarioOut:
+    return usuario_out(usuario, settings)
 
 
 @router.patch("")
-def alterar_conta(perfil: Perfil, usuario: UsuarioAtual, session: SessionDep) -> UsuarioOut:
-    """Altera só os campos enviados (nome, altura, idade, metas); mande `null` para apagar um."""
+def alterar_conta(
+    perfil: Perfil, usuario: UsuarioAtual, session: SessionDep, settings: ConfigDep
+) -> UsuarioOut:
+    """Altera só os campos enviados (nome, altura, idade); mande `null` para apagar um."""
     for campo, valor in perfil.model_dump(exclude_unset=True).items():
         setattr(usuario, campo, valor)
     session.commit()
     session.refresh(usuario)
-    return UsuarioOut.model_validate(usuario, from_attributes=True)
+    return usuario_out(usuario, settings)
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

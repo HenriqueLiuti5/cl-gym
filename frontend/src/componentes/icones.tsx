@@ -56,6 +56,63 @@ const DESENHOS = {
       <circle cx="12" cy="16.75" r="0.6" fill="currentColor" />
     </>
   ),
+  // Botão de compartilhar do iPhone (caixa com seta para cima).
+  compartilhar: <path d="M8.5 9H7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 17 9h-1.5M12 3.5V14M8.75 6.75 12 3.5l3.25 3.25" />,
+  // "Adicionar à Tela de Início" do iPhone (mais dentro de um quadrado).
+  adicionarTela: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </>
+  ),
+  // Menu de três pontos do Chrome no Android.
+  menuPontos: (
+    <>
+      <circle cx="12" cy="5.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18.5" r="1.25" fill="currentColor" stroke="none" />
+    </>
+  ),
+  instalar: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />,
+  copiar: (
+    <>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />
+    </>
+  ),
+  link: <path d="M10 14a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5.66-5.66L11.5 6.84M14 10a4 4 0 0 0-5.66 0l-2.83 2.83a4 4 0 0 0 5.66 5.66l1.33-1.33" />,
+  convite: (
+    <>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <path d="M4 7l8 6 8-6" />
+    </>
+  ),
+  pessoas: (
+    <>
+      <circle cx="9" cy="8.5" r="3.25" />
+      <path d="M3.25 19c.75-3.25 3-5 5.75-5s5 1.75 5.75 5M15.5 5.6a3.25 3.25 0 0 1 0 5.8M17.5 14.3c1.6.6 2.8 2.2 3.25 4.7" />
+    </>
+  ),
+  // Área de administração.
+  escudo: (
+    <>
+      <path d="M12 3.5 5.5 6v5.5c0 4 2.8 7.3 6.5 9 3.7-1.7 6.5-5 6.5-9V6z" />
+      <path d="M9.25 12.25l2 2 3.5-3.75" />
+    </>
+  ),
+  cadeado: (
+    <>
+      <rect x="5.5" y="10.5" width="13" height="9.5" rx="2" />
+      <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+    </>
+  ),
+  relogio: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  lixeira: <path d="M4.5 7h15M9.5 7V5h5v2M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6" />,
 } satisfies Record<string, ReactNode>;
 
 export type NomeIcone = keyof typeof DESENHOS;

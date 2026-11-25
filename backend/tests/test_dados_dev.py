@@ -5,8 +5,10 @@ import pytest
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
-from backend.dados_dev import FUSO, gerar, id_meta, id_registro_diario, main
+from backend.convites import situacao
+from backend.dados_dev import AMIGOS, FUSO, gerar, gerar_amigos, id_meta, id_registro_diario, main
 from backend.models import (
+    Convite,
     Meta,
     MetaBase,
     RegistroDiario,
@@ -115,6 +117,27 @@ def test_rodar_de_novo_nao_duplica_nem_apaga_o_que_foi_lancado(com_catalogo: Ses
     resumo = gerar(session, EMAIL, semanas=3)
     assert resumo.excluidos > 0
     assert ativos(session, Sessao) == resumo.treinos
+
+
+def test_amigos_de_exemplo_para_a_administracao(com_catalogo: Session) -> None:
+    session = com_catalogo
+    assert gerar_amigos(session) == (3, 2)
+    # De novo: atualiza sem duplicar.
+    assert gerar_amigos(session) == (3, 2)
+
+    amigos = session.exec(select(Usuario)).all()
+    assert sorted(u.email for u in amigos) == sorted(a.email for a in AMIGOS)
+    assert all(u.google_sub == f"dev:{u.email}" for u in amigos)  # dá para entrar como dev
+    assert sum(u.bloqueado_em is not None for u in amigos) == 1
+    assert {u.aparelho for u in amigos} == {"iPhone", "Android", "Computador"}
+    assert ativos(session, Sessao) == sum(len(a.treinos) for a in AMIGOS)
+    for sessao in session.exec(select(Sessao)).all():
+        SessaoBase.model_validate(sessao.model_dump())
+
+    convites = session.exec(select(Convite)).all()
+    assert sorted(situacao(c) for c in convites) == ["usado", "valido"]
+    usado = next(c for c in convites if c.usado_por is not None)
+    assert session.get(Usuario, usado.usado_por).email == "marina@exemplo.com"
 
 
 def test_so_roda_em_sqlite(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:

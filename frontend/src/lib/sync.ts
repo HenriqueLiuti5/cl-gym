@@ -5,7 +5,7 @@
 
 import { api, ErroApi, gravarToken, lerToken } from "./api";
 import { agora, db, gravarMeta, lerMeta, tabela } from "./db";
-import { TABELAS, type NomeTabela, type Registros, type Sincronizavel } from "./tipos";
+import { TABELAS, type NomeTabela, type Registros, type Saida, type Sincronizavel } from "./tipos";
 
 export interface EstadoSync {
   situacao: "ok" | "sincronizando" | "offline" | "erro";
@@ -110,6 +110,20 @@ async function baixar(): Promise<void> {
   });
 }
 
+/**
+ * Erros que tiram a pessoa da conta: 401 (sessão vencida ou conta apagada) e 403 de acesso
+ * bloqueado. Um 403 de outro tipo (ex.: registro de outra pessoa) só vira erro na faixa.
+ */
+export function motivoDeSaida(erro: ErroApi): Saida | null {
+  if (erro.status === 401) {
+    return erro.motivo === "conta-apagada"
+      ? { motivo: "conta-apagada", mensagem: erro.message }
+      : { motivo: "sessao-expirada" };
+  }
+  if (erro.status === 403 && erro.motivo === "bloqueado") return { motivo: "bloqueado", mensagem: erro.message };
+  return null;
+}
+
 async function executar(): Promise<void> {
   if (!lerToken()) return;
   // `quando` é a última sincronização que deu certo: fica guardado em todos os estados.
@@ -128,10 +142,11 @@ async function executar(): Promise<void> {
     await registrar({ situacao: "ok", quando: agora() });
   } catch (erro) {
     const e = erro instanceof ErroApi ? erro : new ErroApi(-1, String(erro));
-    if (e.status === 401) {
-      // Sessão vencida ou conta apagada: pede login de novo. Os dados locais ficam.
+    const saida = motivoDeSaida(e);
+    if (saida) {
+      // Sai da conta e a tela de login explica por quê. Os dados locais ficam no aparelho.
       gravarToken(null);
-      await gravarMeta("sessao_expirada", true);
+      await gravarMeta("saida", saida);
     }
     await registrar(
       e.status === 0 ? { situacao: "offline", mensagem: e.message } : { situacao: "erro", mensagem: e.message },

@@ -3,11 +3,13 @@
 1. O app faz o login com o Google Identity Services e recebe um *ID token* (JWT assinado pelo
    Google).
 2. `POST /api/auth/google` confere o ID token (assinatura, emissor, `aud`, validade e
-   `email_verified`) e se o e-mail foi convidado (`EMAILS_PERMITIDOS`). Aprovado, devolve um token
-   de sessão próprio, assinado com `SESSAO_SECRET` e válido por `SESSAO_DIAS` (90 por padrão), que
-   fica no aparelho e funciona mesmo depois de dias offline.
-3. As outras rotas (menos `/api/health`) exigem `Authorization: Bearer <token de sessão>`. A cada
-   chamada o e-mail é conferido de novo na lista: tirar o e-mail dela bloqueia o acesso na hora.
+   `email_verified`). Quem já tem conta entra; conta nova só com um convite válido (ou se for o
+   `ADMIN_EMAIL`). Aprovado, devolve um token de sessão próprio, assinado com `SESSAO_SECRET` e
+   válido por `SESSAO_DIAS` (90 por padrão), que fica no aparelho e funciona mesmo depois de dias
+   offline.
+3. As outras rotas (menos `/api/health` e as públicas do convite) exigem `Authorization: Bearer
+   <token de sessão>`. A cada chamada a conta é conferida de novo: apagada dá 401 e bloqueada dá
+   403, os dois com o motivo no cabeçalho `X-Motivo` (o app sai da conta e explica).
 """
 
 import uuid
@@ -18,9 +20,10 @@ from functools import lru_cache
 from typing import Annotated, Any
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from backend.atividade import registrar_atividade
 from backend.config import Settings, get_settings
 from backend.db import SessionDep
 from backend.models import Usuario
@@ -129,15 +132,31 @@ def criar_token_sessao(
     return token, expira_em
 
 
-def _nao_autenticado(detalhe: str) -> HTTPException:
+def _nao_autenticado(detalhe: str, motivo: str | None = None) -> HTTPException:
+    headers = {"WWW-Authenticate": "Bearer"}
+    if motivo:
+        headers["X-Motivo"] = motivo
+    return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detalhe, headers=headers)
+
+
+MENSAGEM_BLOQUEADO = "Seu acesso ao CL Gym foi bloqueado."
+
+
+def esta_bloqueado(usuario: Usuario, settings: Settings) -> bool:
+    # O admin nunca fica bloqueado: senão ninguém conseguiria desbloquear.
+    return usuario.bloqueado_em is not None and not settings.e_admin(usuario.email)
+
+
+def acesso_bloqueado() -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detalhe,
-        headers={"WWW-Authenticate": "Bearer"},
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=MENSAGEM_BLOQUEADO,
+        headers={"X-Motivo": "bloqueado"},
     )
 
 
 def usuario_atual(
+    request: Request,
     credenciais: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
     session: SessionDep,
@@ -156,10 +175,16 @@ def usuario_atual(
         raise _nao_autenticado("Token de sessão inválido ou vencido") from erro
 
     usuario = session.get(Usuario, usuario_id)
-    if usuario is None:  # conta apagada
-        raise _nao_autenticado("Conta não encontrada")
-    if not settings.email_permitido(usuario.email):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso removido")
+    if usuario is None:  # apagada pela própria pessoa ou pelo admin
+        raise _nao_autenticado("Esta conta foi apagada.", motivo="conta-apagada")
+    if esta_bloqueado(usuario, settings):
+        raise acesso_bloqueado()
+    registrar_atividade(
+        session,
+        usuario,
+        request.headers.get("user-agent"),
+        request.headers.get("x-app-instalado"),
+    )
     return usuario
 
 

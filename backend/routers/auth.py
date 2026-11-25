@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from backend.atividade import registrar_atividade
 from backend.auth import (
     GoogleIndisponivel,
     IdentidadeGoogle,
@@ -13,7 +14,7 @@ from backend.auth import (
     get_verificador_google,
 )
 from backend.config import Settings, get_settings
-from backend.conta import entrar
+from backend.conta import AcessoNegado, entrar_com_regras, usuario_out
 from backend.db import SessionDep
 from backend.models import UsuarioOut
 
@@ -28,11 +29,14 @@ class Config(BaseModel):
 class LoginGoogle(BaseModel):
     # O `credential` que o Google Identity Services entrega ao app.
     id_token: str = Field(min_length=1, max_length=8192)
+    # Código do convite: só para criar a conta (quem já tem conta não precisa).
+    convite: str | None = Field(default=None, max_length=20)
 
 
 class LoginDev(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     nome: str | None = Field(default=None, max_length=200)
+    convite: str | None = Field(default=None, max_length=20)
 
 
 class Login(BaseModel):
@@ -49,32 +53,48 @@ def config(settings: Annotated[Settings, Depends(get_settings)]) -> Config:
     return Config(google_client_id=settings.google_client_id, login_dev=settings.login_dev_ativo)
 
 
-def _sessao(session: SessionDep, settings: Settings, identidade: IdentidadeGoogle) -> Login:
-    if not settings.email_permitido(identidade.email):
+def _sessao(
+    session: SessionDep,
+    settings: Settings,
+    identidade: IdentidadeGoogle,
+    convite: str | None,
+    request: Request,
+) -> Login:
+    try:
+        usuario, novo = entrar_com_regras(session, settings, identidade, convite)
+    except AcessoNegado as erro:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Este e-mail não foi convidado. Peça o convite ao Henrique.",
-        )
-    usuario, novo = entrar(session, identidade)
+            detail=str(erro),
+            headers={"X-Motivo": erro.motivo},
+        ) from erro
+    registrar_atividade(
+        session,
+        usuario,
+        request.headers.get("user-agent"),
+        request.headers.get("x-app-instalado"),
+        forcar=True,
+    )
     token, expira_em = criar_token_sessao(usuario.id, settings)
     return Login(
-        token=token,
-        expira_em=expira_em,
-        usuario=UsuarioOut.model_validate(usuario, from_attributes=True),
-        novo=novo,
+        token=token, expira_em=expira_em, usuario=usuario_out(usuario, settings), novo=novo
     )
 
 
-@router.post(
-    "/google",
-    responses={
-        401: {"description": "ID token do Google inválido"},
-        403: {"description": "E-mail não convidado"},
-        503: {"description": "Não deu para falar com o Google"},
+RESPOSTAS_LOGIN: dict[int | str, dict[str, str]] = {
+    401: {"description": "ID token do Google inválido"},
+    403: {
+        "description": "Sem convite, convite inválido ou acesso bloqueado (motivo no cabeçalho "
+        "X-Motivo: sem-convite, convite-invalido ou bloqueado)"
     },
-)
+    503: {"description": "Não deu para falar com o Google"},
+}
+
+
+@router.post("/google", responses=RESPOSTAS_LOGIN)
 def login_google(
     corpo: LoginGoogle,
+    request: Request,
     session: SessionDep,
     settings: Annotated[Settings, Depends(get_settings)],
     verificador: Annotated[VerificadorGoogle, Depends(get_verificador_google)],
@@ -92,17 +112,20 @@ def login_google(
             detail="Não deu para falar com o Google. Tente de novo.",
         ) from erro
 
-    return _sessao(session, settings, identidade)
+    return _sessao(session, settings, identidade, corpo.convite, request)
 
 
 @router.post("/dev", include_in_schema=False)
 def login_dev(
     corpo: LoginDev,
+    request: Request,
     session: SessionDep,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Login:
-    """Login sem Google para testar localmente. Em produção responde 404."""
+    """Login sem Google para testar localmente (com as mesmas regras de convite). Em produção
+    responde 404."""
     if not settings.login_dev_ativo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
     email = corpo.email.strip().lower()
-    return _sessao(session, settings, IdentidadeGoogle(f"dev:{email}", email, corpo.nome))
+    identidade = IdentidadeGoogle(f"dev:{email}", email, corpo.nome)
+    return _sessao(session, settings, identidade, corpo.convite, request)

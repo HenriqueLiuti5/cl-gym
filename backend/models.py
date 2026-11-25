@@ -15,10 +15,10 @@ por todos, e as fichas são os modelos copiados para cada usuário no primeiro l
 
 import datetime as dt
 import uuid
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import AwareDatetime, model_validator
-from sqlalchemy import JSON, Index, UniqueConstraint, text
+from sqlalchemy import JSON, Index, UniqueConstraint, false, text
 from sqlmodel import Field, SQLModel
 
 from backend.db import ListaUUID, UTCDateTime
@@ -48,11 +48,85 @@ class Usuario(Perfil, table=True):
     email: str = Field(max_length=320)
     criado_em: AwareDatetime = Field(sa_type=UTCDateTime)
 
+    # Atividade, só para a área de administração (gravada a cada chamada com o token).
+    visto_em: AwareDatetime | None = Field(default=None, sa_type=UTCDateTime)
+    # "iPhone", "iPad", "Android" ou "Computador", pelo User-Agent da última chamada.
+    aparelho: str | None = Field(default=None, max_length=20)
+    # A última chamada veio do app instalado (e não do navegador).
+    instalado: bool = Field(default=False, sa_column_kwargs={"server_default": false()})
+    # Bloqueado pelo admin: perde o acesso, mas os dados ficam.
+    bloqueado_em: AwareDatetime | None = Field(default=None, sa_type=UTCDateTime)
+
 
 class UsuarioOut(Perfil):
     id: uuid.UUID
     email: str
     criado_em: AwareDatetime
+    # A conta do ADMIN_EMAIL: o app mostra a área de administração.
+    admin: bool = False
+
+
+class UsuarioResumo(SQLModel):
+    id: uuid.UUID
+    nome: str | None
+    email: str
+
+
+class UsuarioAdmin(UsuarioResumo):
+    """O que o admin vê de cada pessoa: só atividade. Nada de peso, alimentação, metas ou cargas."""
+
+    criado_em: AwareDatetime
+    visto_em: AwareDatetime | None
+    aparelho: str | None
+    instalado: bool
+    bloqueado: bool
+    bloqueado_em: AwareDatetime | None
+    admin: bool
+    # Treinos terminados (sem os excluídos): no total e nos últimos 30 dias.
+    treinos: int
+    treinos_30d: int
+    ultimo_treino: AwareDatetime | None
+
+
+# --- Convites -------------------------------------------------------------------------------
+
+SituacaoConvite = Literal["valido", "expirado", "usado", "cancelado"]
+
+
+class Convite(SQLModel, table=True):
+    """Convite para criar conta: código de 8 caracteres, vale 24 h e serve para uma pessoa.
+    Não sincroniza: só o admin vê, pela API."""
+
+    __tablename__ = "convites"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Sem hífen (o app mostra "XXXX-XXXX"). Alfabeto em backend/convites.py.
+    codigo: str = Field(max_length=8, unique=True, index=True)
+    criado_em: AwareDatetime = Field(sa_type=UTCDateTime)
+    expira_em: AwareDatetime = Field(sa_type=UTCDateTime)
+    usado_em: AwareDatetime | None = Field(default=None, sa_type=UTCDateTime)
+    # Quem criou a conta com ele (fica nulo se a conta for apagada).
+    usado_por: uuid.UUID | None = Field(default=None, foreign_key="usuarios.id")
+    cancelado_em: AwareDatetime | None = Field(default=None, sa_type=UTCDateTime)
+
+
+class ConvitePublico(SQLModel):
+    """O que quem recebeu o link pode saber do convite (nunca o código)."""
+
+    situacao: SituacaoConvite
+    expira_em: AwareDatetime
+
+
+class ConviteAdmin(SQLModel):
+    id: uuid.UUID
+    # "XXXX-XXXX" enquanto vale; depois de usado, expirado ou cancelado, some (nulo).
+    codigo: str | None
+    situacao: SituacaoConvite
+    criado_em: AwareDatetime
+    expira_em: AwareDatetime
+    usado_em: AwareDatetime | None
+    cancelado_em: AwareDatetime | None
+    usado_por: UsuarioResumo | None
 
 
 # --- Base da sincronização ------------------------------------------------------------------

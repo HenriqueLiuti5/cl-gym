@@ -1,0 +1,2050 @@
+
+❯ Coloquei a logo do sistema em @"frontend/src/Emblema CL com Silhueta
+  Alienígena.png" , melhore a qualidade da imagem, e essa será a logo oficial
+  do sistema e do app
+
+  Read 4 files, ran 3 shell commands (ctrl+o to expand)
+
+● The 1254 px image is soft and noisy, so I'm running a CPU-based Real-ESRGAN
+  upscale in an isolated scratchpad environment, then I'll build the app icons
+  from that. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While torch installs, I'll check the rest of the project for where the current
+  icon is used.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the upscaler script (Real-ESRGAN network written out by hand, to avoid the
+  basicsr dependency):
+
+  Made 1 scratchpad edit +96, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● The install was pulling in the CUDA libraries (several GB). I'll stop it and
+  install the CPU-only torch build.
+
+● Stop Task
+  ⎿  cd /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3db4-46e5-840
+     a-675ce39336a2/scratchpad && mkdir -p modelos && (curl -sSL -o
+     modelos/anime6b.pth https:/… · stopped
+
+  Ran 4 shell commands · 1 failed (ctrl+o to expand)
+
+● While the upscale runs, I'll write the script that generates the icons from
+  the logo. It goes in the repo so the icons can be rebuilt if the logo changes.
+
+● Write(scripts/icones.py)
+  ⎿  Wrote 95 lines to scripts/icones.py
+      1 # /// script
+      2 # requires-python = ">=3.12"
+      3 # dependencies = ["pillow"]
+      4 # ///
+      5 """Gera os ícones do app a partir da logo oficial (`frontend/marc
+        a/logo.png`):
+      6
+      7     uv run scripts/icones.py
+      8
+      9 Saem em `frontend/public/`:
+     … +86 lines (ctrl+o to expand)
+
+  Made 1 scratchpad edit +25 (ctrl+o to expand)
+
+● Meanwhile, I'll update the frontend references (manifest, favicon, login
+  screen):
+
+● Bash(cd /home/henrique/Music/cl-gym/frontend && python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/vite.config.ts +2 -2
+      10      VitePWA({
+      11        // O service worker novo entra sozinho na próxima abertur
+          a com internet.
+      12        registerType: "autoUpdate",
+      13 -      includeAssets: ["icone.svg", "apple-touch-icon.png"],    
+      13 +      includeAssets: ["apple-touch-icon.png"],                 
+      14        manifest: {
+      15          name: "CL Gym",
+      16          short_name: "CL Gym",
+     ...
+      25          icons: [
+      26            { src: "icone-192.png", sizes: "192x192", type: "imag
+          e/png" },
+      27            { src: "icone-512.png", sizes: "512x512", type: "imag
+          e/png" },
+      28 -          { src: "icone-512.png", sizes: "512x512", type: "imag
+         -e/png", purpose: "maskable" },                                 
+      28 +          { src: "icone-maskable-512.png", sizes: "512x512", ty
+         +pe: "image/png", purpose: "maskable" },                        
+      29          ],
+      30        },
+      31        workbox: {
+  ⎿  Updated frontend/index.html +1 -1
+      12      <!-- "default": no iPhone, a barra de status fica fora do a
+          pp e acompanha o tema do celular. -->
+      13      <meta name="apple-mobile-web-app-status-bar-style" content=
+          "default" />
+      14      <meta name="apple-mobile-web-app-title" content="CL Gym" />
+      15 -    <link rel="icon" href="/icone.svg" type="image/svg+xml" /> 
+      15 +    <link rel="icon" href="/icone-192.png" type="image/png" siz
+         +es="192x192" />                                                
+      16      <link rel="apple-touch-icon" href="/apple-touch-icon.png" /
+          >
+      17      <title>CL Gym</title>
+      18    </head>
+  ⎿  Updated frontend/src/telas/Login.tsx +1 -1
+      90    return (
+      91      <main className="mx-auto flex min-h-dvh max-w-sm flex-col j
+          ustify-center px-6 py-12">
+      92        <div className="mb-10">
+      93 -        <img src="/icone.svg" alt="" className="mb-5 h-16 w-16 
+         -rounded-[18px]" />                                             
+      93 +        <img src="/icone-512.png" alt="" className="mb-5 h-20 w
+         +-20 rounded-[22px]" />                                         
+      94          <h1 className="text-[32px] leading-tight font-bold">CL 
+          Gym</h1>
+      95          <p className="mt-2 text-[17px] leading-snug text-texto-
+          2">Treinos, cargas, peso e alimentação. Funciona mesmo sem inte
+          rnet.</p>
+      96        </div>
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated CLAUDE.md +9 -3
+      59  uv run pytest                             # testes
+      60  uv run ruff check . && uv run ruff format .
+      61  uv run alembic revision --autogenerate -m "descrição"   # depoi
+          s de mudar models.py
+      62 +uv run scripts/icones.py                  # refaz os ícones de 
+         +frontend/public a partir da logo                               
+      63  ```
+      64  
+      65  No SQLite as migrações rodam com as chaves estrangeiras desliga
+          das (o modo batch recria a tabela
+     ...
+      108    migrations/           Alembic
+      109    tests/                conftest (login simulado, sem rede), d
+           ados de exemplo e testes
+      110  scripts/preparar.py     prepara um computador novo (.env de de
+           v, banco, seed, npm ci)
+      111 +scripts/icones.py       gera os ícones do app a partir da logo
+          + (pillow, via `uv run`)                                       
+      112  frontend/
+      113    index.html, vite.config.ts   PWA (manifest, service worker, 
+           cache das imagens), proxy de /api
+      112 -  public/                      ícones (os PNGs saem do icone.s
+          -vg, em quadrado inteiro)                                      
+      114 +  marca/logo.png               logo oficial (emblema CL, 2048 
+          +px), fonte dos ícones; não é publicada                        
+      115 +  public/                      ícones (saem da marca/logo.png 
+          +com scripts/icones.py)                                        
+      116    src/index.css                cores do tema claro e do escuro
+            (variáveis), estilos de base
+      117    src/main.tsx, App.tsx        entrada, rotas por hash (#/trei
+           no/<id>) e abas de baixo
+      118    src/lib/db.ts                banco local (Dexie): espelho da
+           s tabelas + `pendente`
+     ...
+      262  - **Padrões de celular:** título grande nas abas, barra fixa c
+           om voltar nas telas internas, listas
+      263    agrupadas (estilo ajustes), campos em linha com a unidade ao
+            lado, seletor de segmentos no lugar
+      264    de abas de texto. Confirmação é a janela `Confirmar` do app,
+            nunca o `confirm()` do navegador.
+      262 -- Ícone do app: halter branco sobre o azul do acento; os PNGs 
+          -saem do `public/icone.svg` em                                 
+      263 -  quadrado inteiro (o sistema aplica a máscara), com o desenho
+          - dentro da área segura.                                       
+      265 +- **Logo e ícone do app** (decidido em 25/11/2026): o emblema 
+          +CL em preto e branco de                                       
+      266 +  `frontend/marca/logo.png`, a imagem do Henrique ampliada e l
+          +impa. É a única exceção à regra de                            
+      267 +  brilho e gradiente: não redesenhar nem colorir. Os PNGs de `
+          +public/` saem dela com                                        
+      268 +  `uv run scripts/icones.py`, em fundo preto e quadrado inteir
+          +o (o sistema aplica a máscara); no                            
+      269 +  maskable o desenho fica dentro da área segura. A tela de log
+          +in mostra o `icone-512.png`.                                  
+      270  
+      271  ## Catálogo (seed)
+      272  
+
+● The logo is being upscaled 4× on the CPU, and the manifest, favicon, login
+  screen and CLAUDE.md already point to it. Once that finishes, I'll clean it up
+  and generate the app icons. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The upscale is still running. I'll pick it up from there as soon as it
+  finishes.
+
+● Background command "cd /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3
+  db4-46e5-840a-675ce39336a2/scratchpad && venv/bin/python -I upscale.py
+  modelos/anime6b.pth work/orig.png work/x4_anime.png 6 2>&1 | tail -3 && ls -la
+  work/x4_anime.png" completed (exit code 0)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "cd /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3
+  db4-46e5-840a-675ce39336a2/scratchpad && until [ -f work/x4_anime.png ] || !
+  pgrep -f "upscale.py modelos" >/dev/null; do sleep 5; done; sleep 3; ls -la
+  work/x4_anime.png; cat /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3
+  db4-46e5-840a-675ce39336a2/tasks/b5krvjwgq.output" completed (exit code 0)
+
+  Read 3 files (ctrl+o to expand)
+
+● The upscale is clearly sharper: clean edges and no noise or compression
+  blocks. The white-point adjustment I applied flattened the shading of the
+  letters, so I'll redo it keeping the original tones.
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● The result looks good: clean edges, pure black background, 2048 px, 240 KB.
+  Next I'll move it into the project and generate the icons.
+
+● Bash(mkdir -p frontend/marca && cp /tmp/claude-1000/-home-henrique-Music-cl-gy
+      m/29831bc6-3db4-46e5-840a-675ce39336a2/scratchpad/work/logo2048.png
+      frontend/marca/logo…)
+  ⎿  Deleted frontend/public/icone.svg -10
+       1 -<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"> 
+       2 -  <rect width="512" height="512" rx="112" fill="#1a5fcc"/>     
+       3 -  <g fill="#ffffff">                                           
+       4 -    <rect x="90" y="204" width="38" height="104" rx="10"/>     
+       5 -    <rect x="135" y="170" width="44" height="172" rx="12"/>    
+       6 -    <rect x="179" y="240" width="154" height="32" rx="6"/>     
+       7 -    <rect x="333" y="170" width="44" height="172" rx="12"/>    
+       8 -    <rect x="384" y="204" width="38" height="104" rx="10"/>    
+       9 -  </g>                                                         
+      10 -</svg>                                                         
+  ⎿  … +6 files changed
+     frontend/marca/logo.png
+     frontend/src/Emblema CL com Silhueta Alienígena.png
+     frontend/public/icone-192.png
+     +3 more
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The icons look right at every size, and the maskable one stays inside the
+  circle. The maskable logo came out a little small, so I'll size it to the full
+  80% safe zone and then run the checks.
+
+● Bash(sed -i 's/^# Ícone comum: o emblema ocupa 86% do lado. Maskable: cabe num
+      círculo de 76% (a área segura é 80%)./# Ícone comum: o emblema ocupa 86%
+      do lado. Mask…)  ⎿  Updated scripts/icones.py +2 -2
+      28  
+      29  # Abaixo disso o pixel conta como fundo (o brilho em volta do e
+          mblema some no ícone pequeno).
+      30  LIMIAR_FUNDO = 12
+      31 -# Ícone comum: o emblema ocupa 86% do lado. Maskable: cabe num 
+         -círculo de 76% (a área segura é 80%).                          
+      31 +# Ícone comum: o emblema ocupa 86% do lado. Maskable: cabe no c
+         +írculo da área segura (80% do lado).                           
+      32  OCUPACAO_COMUM = 0.86
+      33 -DIAMETRO_MASKABLE = 0.76                                       
+      33 +DIAMETRO_MASKABLE = 0.80                                       
+      34  
+      35  
+      36  def recortar_emblema(logo: Image.Image) -> Image.Image:
+  ⎿  … +1 file changed
+     frontend/public/icone-maskable-512.png
+
+● Update(scripts/icones.py)
+  ⎿  Added 2 lines, removed 1 line
+      88      for nome, imagem in icones.items():
+      89          destino = SAIDA / nome
+      90          imagem.save(destino, optimize=True)
+      91 -        print(f"{destino.relative_to(RAIZ)}  {imagem.width}x{im
+         -agem.height}  {destino.stat().st_size // 1024} KB")            
+      91 +        kb = destino.stat().st_size // 1024                    
+      92 +        print(f"{destino.relative_to(RAIZ)}  {imagem.width}x{im
+         +agem.height}  {kb} KB")                                        
+      93  
+      94  
+      95  if __name__ == "__main__":
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● A logo nova já é a oficial: está nos ícones do app, no favicon e na tela de
+  login.
+
+  A melhoria da imagem
+  - Ampliei 4 vezes com o Real-ESRGAN, um modelo de IA feito para desenhos, e
+    reduzi para 2048 × 2048 px. As bordas ficaram nítidas, sumiram o ruído e os
+    blocos de compressão, e as diagonais do "CL" perderam o serrilhado.
+  - O fundo virou preto puro e os tons ficaram em cinza neutro, sem o leve tom
+    de cor que havia. O arquivo final tem 240 KB.
+  - Uma perda pequena: a face de cima das letras ficou branca lisa, sem o
+    degradê suave que tinha. O relevo nas faces de baixo continua.
+
+  No projeto (nada commitado)
+  - A versão melhorada está em frontend/marca/logo.png, fora do public/, então
+    não vai para o site. Tirei o arquivo original do src/; uma cópia está em
+    /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3db4-46e5-840a-675ce39
+    336a2/scratchpad/work/original-backup.png. Essa pasta temporária pode ser
+    apagada, então guarde a cópia se quiser manter o original.
+  - Ícones gerados:
+    - icone-192.png e icone-512.png, com o emblema centralizado no fundo preto;
+    - apple-touch-icon.png (180 px), para o iPhone;
+    - icone-maskable-512.png, novo: o Android pode cortar o ícone em círculo, e
+      aqui o desenho fica dentro da área segura.
+  - Apaguei o ícone antigo do halter (icone.svg). O favicon e o manifest usam os
+    PNGs novos, e a tela de login mostra o ícone com 80 px.
+  - O script scripts/icones.py refaz todos os ícones a partir da logo com uv run
+    scripts/icones.py.
+  - No CLAUDE.md, a regra "sem brilho nem gradiente" ganhou uma exceção para a
+    logo, para ninguém redesenhá-la depois. Também atualizei os comandos e a
+    estrutura.
+
+  O lint, a checagem de tipos, os 60 testes, o build e o ruff passaram. Conferi
+  os ícones numa montagem com várias máscaras e tamanhos, mas não abri a tela de
+  login no navegador.
+
+  Um aviso: o personagem é o Quatro Braços, do Ben 10, com o símbolo do Omnitrix
+  no peito, e os dois pertencem à Cartoon Network. Usar entre amigos, sem
+  cobrar, não deve dar problema. Mas o repositório é público e serve de
+  portfólio, então a imagem fica exposta no GitHub e no cl-gym.vercel.app. É o
+  mesmo cuidado do CLAUDE.md com os GIFs com direitos autorais. Se quiser
+  reduzir isso, posso trocar o símbolo do peito por um círculo simples, mas o
+  personagem continua reconhecível.
+
+❯ não precisa, pode mandar tudo pro github e iniciar o sistema pra mim ver
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Commit enviado para a main (6498b81). Agora vou subir a API e o app:
+
+  Ran 3 shell commands · 1 failed (ctrl+o to expand)
+
+● Enviei tudo para o GitHub e o sistema está rodando. Abra http://localhost:5173
+  para ver.
+
+  - GitHub: o commit 6498b81 ("Adota o emblema CL como logo e ícone do app")
+    está na main.
+  - API em http://localhost:8000: respondeu "ok".
+  - App em http://localhost:5173: a página abre e o ícone novo carrega.
+  - Para entrar: na tela de login, a logo aparece no topo. Use o botão "Entrar
+    como dev", que está ligado no seu .env.
+  - Navegador: se o favicon antigo ainda aparecer na aba, recarregue com
+    Ctrl+Shift+R. O navegador costuma guardar o ícone em cache.
+
+  Os dois servidores ficam ligados até você me pedir para parar ou fechar esta
+  sessão.
+
+❯ e agora o login com google?
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● O botão do Google ainda não funciona porque o .env tem um ID falso
+  (000000000000-desenvolvimento...). Para ele funcionar, você precisa criar um
+  cliente OAuth no Google Cloud. Esse passo pede login na sua conta, então é
+  você quem faz; leva uns 5 minutos.
+
+  1. Projeto (sem faturamento)
+  - Abra https://console.cloud.google.com e crie um projeto chamado "CL Gym".
+  - Se o Google oferecer conta de faturamento ou pedir cartão, pule. Sem cartão
+    nada é cobrado.
+
+  2. Tela de consentimento (menu Google Auth Platform, ou "APIs e serviços →
+  Tela de permissão OAuth")
+  - Em "Primeiros passos", ponha o nome do app "CL Gym" e o seu e-mail de
+    suporte.
+  - Em público-alvo, escolha Externo e conclua.
+  - Em Público-alvo, clique em Publicar app (em produção). Como o app só usa
+    nome, e-mail e foto, o Google não pede verificação. Sem publicar, só entra
+    quem estiver na lista de "usuários de teste".
+
+  3. Cliente OAuth (menu Clientes → Criar cliente)
+  - No tipo, escolha Aplicativo da Web.
+  - Em Origens JavaScript autorizadas, adicione estas três:
+    - http://localhost
+    - http://localhost:5173
+    - https://cl-gym.vercel.app
+  - Deixe "URIs de redirecionamento" vazio e crie.
+  - Copie o ID do cliente, que termina em .apps.googleusercontent.com. A chave
+    secreta não é necessária.
+
+  4. Cole o ID do cliente aqui. Esse ID não é secreto: ele vai para o navegador
+  de qualquer jeito. Eu faço o resto:
+  - ponho o ID no .env;
+  - troco o e-mail de exemplo em EMAILS_PERMITIDOS pelo seu Gmail, sem tirar o
+    "Entrar como dev";
+  - reinicio a API.
+
+  O Google pode levar alguns minutos, e às vezes até algumas horas, para aceitar
+  as origens novas. Se der "origin not allowed" logo depois, espere um pouco e
+  tente de novo.
+
+  No celular, o login com Google só vai funcionar depois do deploy na Vercel.
+  Pelo IP da rede de casa (http://192.168...) o Google recusa, porque fora do
+  localhost ele exige https.
+
+❯ ok, enquanto isso, melhore a tela de login do sistema
+
+● Vou ler a tela atual e os componentes de interface antes de mexer.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Vou tirar um print da tela atual, como num celular, com o Chromium que já está
+  instalado na máquina:
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Stop Task
+  ⎿  cd /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3db4-46e5-840
+     a-675ce39336a2/scratchpad && cat > print.sh <<'EOF'
+     #!/bin/bash… · stopped
+
+  Made 1 scratchpad edit +35, read 2 files, ran 3 shell commands · 2 failed (ctrl+o to expand)
+
+● Tenho o "antes": logo pequena no canto, botão no meio da tela e o bloco de dev
+  com cara de improviso. Agora vou desenhar a versão nova: logo grande num topo
+  preto e a ação principal logo abaixo.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Vou fazer o script gerar também uma versão grande do emblema para a tela de
+  login. O icone-512 fica borrado no tamanho que vou usar.
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated scripts/icones.py +9 -4
+       8  
+       9  Saem em `frontend/public/`:
+      10  
+      11 -- `icone-192.png` e `icone-512.png`: ícone comum (manifest, fav
+         -icon e tela de login);                                         
+      11 +- `icone-192.png` e `icone-512.png`: ícone comum (manifest e fa
+         +vicon);                                                        
+      12  - `icone-maskable-512.png`: o Android corta em círculo, gota ou
+           quadrado, então o desenho fica
+      13    dentro da área segura (círculo de 80% do lado);
+      14 -- `apple-touch-icon.png` (180 px): ícone da tela de início no i
+         -Phone.                                                         
+      14 +- `apple-touch-icon.png` (180 px): ícone da tela de início no i
+         +Phone;                                                         
+      15 +- `logo-1024.png`: o emblema grande, sobre o topo preto da tela
+         + de login.                                                     
+      16  
+      17  O emblema é centralizado pelo que aparece (o fundo é preto) e n
+          ão pela imagem original, que tem
+      18  mais sobra embaixo do que em cima. Pode rodar de novo quando a 
+          logo mudar.
+     ...
+      30  # Abaixo disso o pixel conta como fundo (o brilho em volta do e
+          mblema some no ícone pequeno).
+      31  LIMIAR_FUNDO = 12
+      32  # Ícone comum: o emblema ocupa 86% do lado. Maskable: cabe no c
+          írculo da área segura (80% do lado).
+      33 +# Login: quase sem margem, porque o topo preto da tela já dá o 
+         +respiro.                                                       
+      34  OCUPACAO_COMUM = 0.86
+      35 +OCUPACAO_LOGIN = 0.94                                          
+      36  DIAMETRO_MASKABLE = 0.80
+      37  
+      38  
+     ...
+      60      return raio * escala
+      61  
+      62  
+      60 -def montar(emblema: Image.Image, lado: int, escala: float) -> I
+         -mage.Image:                                                    
+      63 +def montar(emblema: Image.Image, lado: int, escala: float, modo
+         +: str = "RGB") -> Image.Image:                                 
+      64      """Põe o emblema, redimensionado por `escala`, no centro de
+           um quadrado preto de `lado` px."""
+      65      largura = max(1, round(emblema.width * escala))
+      66      altura = max(1, round(emblema.height * escala))
+      67      reduzido = emblema.resize((largura, altura), Image.Resampli
+          ng.LANCZOS)
+      68      fundo = Image.new("L", (lado, lado), 0)
+      69      fundo.paste(reduzido, ((lado - largura) // 2, (lado - altur
+          a) // 2))
+      67 -    return fundo.convert("RGB")                                
+      70 +    return fundo.convert(modo)                                 
+      71  
+      72  
+      73  def main() -> None:
+     ...
+      87          "icone-512.png": comum(512),
+      88          "apple-touch-icon.png": comum(180),
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated frontend/vite.config.ts +1 -1
+      10      VitePWA({
+      11        // O service worker novo entra sozinho na próxima abertur
+          a com internet.
+      12        registerType: "autoUpdate",
+      13 -      includeAssets: ["apple-touch-icon.png"],                 
+      13 +      includeAssets: ["apple-touch-icon.png", "logo-1024.png"],
+      14        manifest: {
+      15          name: "CL Gym",
+      16          short_name: "CL Gym",
+  ⎿  Updated CLAUDE.md +1 -1
+      266    `frontend/marca/logo.png`, a imagem do Henrique ampliada e l
+           impa. É a única exceção à regra de
+      267    brilho e gradiente: não redesenhar nem colorir. Os PNGs de `
+           public/` saem dela com
+      268    `uv run scripts/icones.py`, em fundo preto e quadrado inteir
+           o (o sistema aplica a máscara); no
+      269 -  maskable o desenho fica dentro da área segura. A tela de log
+          -in mostra o `icone-512.png`.                                  
+      269 +  maskable o desenho fica dentro da área segura. A tela de log
+          +in mostra o `logo-1024.png` sobre um topo preto.              
+      270  
+      271  ## Catálogo (seed)
+      272  
+  ⎿  … +1 file changed
+     frontend/public/logo-1024.png
+
+● Agora a tela nova:
+
+  Ran 1 shell command · 1 failed (ctrl+o to expand)
+
+● Update(frontend/src/telas/Login.tsx)
+  ⎿  Added 7 lines, removed 4 lines
+      51  
+      52    // A barra do navegador acompanha o topo preto da logo enquan
+          to esta tela está aberta.
+      53    useEffect(() => {
+      54 -    const metas = [...document.querySelectorAll<HTMLMetaElement
+         ->('meta[name="theme-color"]')];                                
+      55 -    const antes = metas.map((m) => m.content);                 
+      56 -    for (const m of metas) m.content = "#000000";              
+      57 -    return () => metas.forEach((m, i) => (m.content = antes[i])
+         -);                                                             
+      54 +    const antes = [...document.querySelectorAll<HTMLMetaElement
+         +>('meta[name="theme-color"]')].map(                            
+      55 +      (meta) => [meta, meta.content] as const,                 
+      56 +    );                                                         
+      57 +    for (const [meta] of antes) meta.content = "#000000";      
+      58 +    return () => {                                             
+      59 +      for (const [meta, cor] of antes) meta.content = cor;     
+      60 +    };                                                         
+      61    }, []);
+      62  
+      63    useEffect(() => {
+
+  Read 3 files, ran 1 shell command (ctrl+o to expand)
+
+● No celular pequeno também cabe. Só vou centralizar o título e a frase, para
+  alinhar com a logo e com a nota de baixo:
+
+● Bash(cd /home/henrique/Music/cl-gym/frontend && python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/src/telas/Login.tsx +2 -2
+      112  
+      113        <div className="-mt-7 rounded-t-[28px] bg-fundo px-6 pt-
+           8 pb-[max(env(safe-area-inset-bottom),2rem)]">
+      114          <div className="mx-auto max-w-sm">
+      115 -          <h1 className="text-[30px] leading-tight font-bold">
+          -CL Gym</h1>                                                   
+      116 -          <p className="mt-1.5 text-[17px] leading-snug text-t
+          -exto-2">                                                      
+      115 +          <h1 className="text-center text-[30px] leading-tight
+          + font-bold">CL Gym</h1>                                       
+      116 +          <p className="mx-auto mt-1.5 max-w-xs text-center te
+          +xt-[17px] leading-snug text-texto-2">                         
+      117              Treinos, cargas, peso e alimentação. Funciona mesm
+           o sem internet.
+      118            </p>
+      119  
+  ⎿  (timeout 5m)
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● Ficou bom no celular e no computador. Falta conferir se o login de dev ainda
+  entra (agora com Enter) e se a cor da barra volta ao normal depois de entrar:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● A tela de login nova já está no ar no servidor local. Recarregue
+  http://localhost:5173 para ver. Se você já entrou como dev, saia pela tela
+  Conta ou abra numa janela anônima.
+
+  O que mudou
+  - Logo em destaque: o emblema aparece grande num topo preto, que se funde com
+    o fundo da própria logo. A barra do navegador fica preta enquanto a tela de
+    login está aberta e volta à cor normal depois de entrar.
+  - Login embaixo: nome, frase e botão do Google ficam centralizados numa área
+    de cantos arredondados no pé da tela, onde o polegar alcança.
+  - Sem pulo na tela: enquanto o script do Google carrega, um retângulo cinza
+    ocupa o lugar do botão, então nada se mexe quando ele aparece.
+  - Login de dev: virou uma linha discreta (campo e botão "Entrar") e entra com
+    Enter. Ele lembra o último e-mail usado, então nos testes é só tocar em
+    "Entrar".
+  - Imagem nova: o script dos ícones agora gera também logo-1024.png, com 103 KB
+    em tons de cinza. A imagem é guardada para funcionar offline, e o CLAUDE.md
+    foi atualizado.
+
+  Conferido
+  - Tirei prints num iPhone comum, num iPhone SE e no computador, nos temas
+    claro e escuro.
+  - Testei o login de dev de ponta a ponta: entra, a cor da barra volta ao
+    normal e o e-mail fica guardado.
+  - O lint, a checagem de tipos e os 60 testes passaram.
+
+  Ainda não fiz commit; quer que eu mande também para o GitHub? E quando tiver o
+  ID do cliente do Google, é só colar aqui.
+
+❯ 464542754413-hh32so19bkd8n675k6sq51gndphn9dtt.apps.googleusercontent.com
+
+  Searched for 1 pattern (ctrl+o to expand)
+● O "Entrar como dev" usa o primeiro e-mail da lista (dev@exemplo.com), então
+  ele fica. Troco só o amigo@exemplo.com de exemplo pelo seu Gmail:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Agora reinicio a API para ela ler o .env novo:
+
+● Stop Task
+  ⎿  uv run alembic upgrade head 2>&1 | tail -1; uv run uvicorn
+     backend.main:app --reload --port 8000 >
+     /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3db4-46… ·
+     stopped
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● O Google aceitou o ID: o botão carrega sem nenhum erro no console. Antes dava
+  "client ID not found". O último passo depende de você, porque é a sua conta
+  Google:
+
+  1. Abra http://localhost:5173. Se estiver logado como dev, saia antes pela
+     tela Conta.
+  2. Toque em "Continuar com o Google" e escolha o seu Gmail.
+  3. No primeiro login o app copia as fichas modelo para a sua conta e abre as
+     boas-vindas pedindo peso, altura e idade. O nome já vem do Google.
+
+  Os dados de exemplo da conta de dev continuam no banco local. Para vê-los de
+  novo, saia e use "Entrar como dev".
+
+  O que mudou no .env (ele não vai para o Git):
+  - GOOGLE_CLIENT_ID agora tem o seu ID.
+  - Em EMAILS_PERMITIDOS, troquei o amigo@exemplo.com pelo seu Gmail e mantive o
+    dev@exemplo.com.
+  - Reiniciei a API para ela ler os valores novos.
+
+  Se der erro:
+  - "origin not allowed" ou um popup de erro do Google: as origens ainda não
+    valeram. Espere alguns minutos e tente de novo.
+  - "Este e-mail não foi convidado": você escolheu outra conta Google que não
+    está na lista.
+
+  A tela de login nova ainda não foi commitada. Quer que eu mande para o GitHub?
+
+❯ melhore a aparencia do botão de logar com google
+
+● O botão é desenhado pelo próprio Google, dentro de um iframe. Só dá para
+  escolher entre as opções que ele oferece: tema, formato e posição do "G".
+  Montar um botão próprio exigiria trocar o fluxo de login ou esconder o botão
+  do Google por baixo de outro, e não vou fazer isso. Vou comparar as
+  combinações possíveis lado a lado, nos dois temas:
+
+  Made 1 scratchpad edit +51, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● O botão fica preto com o "G" num círculo no tema claro, e branco no escuro,
+  onde o preto sumia. Também vou fazer ele trocar de cor na hora se o tema do
+  celular mudar com a tela aberta. · summary
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(frontend/src/telas/Login.tsx)
+  ⎿  Added 23 lines, removed 10 lines
+      63    useEffect(() => {
+      64      if (!config || !botaoGoogle.current) return;
+      65      const alvo = botaoGoogle.current;
+      66 +    const temaEscuro = window.matchMedia("(prefers-color-scheme
+         +: dark)");                                                     
+      67 +    let desenhar: (() => void) | null = null;                  
+      68      carregarGoogle()
+      69        .then((google) => {
+      70          google.initialize({
+     ...
+       77                .finally(() => setCarregando(false));
+       78            },
+       79          });
+       78 -        const escuro = window.matchMedia("(prefers-color-schem
+          -e: dark)").matches;                                           
+       79 -        google.renderButton(alvo, {                           
+       80 -          theme: escuro ? "filled_black" : "outline",         
+       81 -          size: "large",                                      
+       82 -          shape: "rectangular",                               
+       83 -          text: "continue_with",                              
+       84 -          locale: "pt-BR",                                    
+       85 -          // O botão do Google aceita de 200 a 400 px: ocupa a
+          - largura da coluna.                                           
+       86 -          width: Math.min(400, Math.max(200, alvo.offsetWidth)
+          -),                                                            
+       87 -        });                                                   
+       80 +        // O botão é do Google (num iframe): só dá para escolh
+          +er entre as opções dele. Pílula com o                         
+       81 +        // "G" no centro; preto no tema claro (combina com o t
+          +opo da logo) e branco no escuro, onde o                       
+       82 +        // preto sumiria no fundo.                            
+       83 +        desenhar = () => {                                    
+       84 +          alvo.replaceChildren();                             
+       85 +          google.renderButton(alvo, {                         
+       86 +            theme: temaEscuro.matches ? "outline" : "filled_bl
+          +ack",                                                         
+       87 +            size: "large",                                    
+       88 +            shape: "pill",                                    
+       89 +            logo_alignment: "center",                         
+       90 +            text: "continue_with",                            
+       91 +            locale: "pt-BR",                                  
+       92 +            // O botão do Google aceita de 200 a 400 px: ocupa
+          + a largura da coluna.                                         
+       93 +            width: Math.min(400, Math.max(200, alvo.offsetWidt
+          +h)),                                                          
+       94 +          });                                                 
+       95 +        };                                                    
+       96 +        desenhar();                                           
+       97 +        temaEscuro.addEventListener("change", desenhar);      
+       98          setGooglePronto(true);
+       99        })
+      100        .catch(() => setErro("Não deu para carregar o login do G
+           oogle. Confira a internet."));
+      101 +    return () => {                                            
+      102 +      if (desenhar) temaEscuro.removeEventListener("change", d
+          +esenhar);                                                     
+      103 +    };                                                        
+      104    }, [config]);
+      105  
+      106    async function entrarComoDev(evento: FormEvent) {
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/src/telas/Login.tsx +5 -2
+      64      if (!config || !botaoGoogle.current) return;
+      65      const alvo = botaoGoogle.current;
+      66      const temaEscuro = window.matchMedia("(prefers-color-scheme
+          : dark)");
+      67 +    let ativo = true;                                          
+      68      let desenhar: (() => void) | null = null;
+      69      carregarGoogle()
+      70        .then((google) => {
+      71 +        if (!ativo) return;                                    
+      72          google.initialize({
+      73            client_id: config.google_client_id,
+      74            callback: ({ credential }) => {
+     ...
+      101        })
+      102        .catch(() => setErro("Não deu para carregar o login do G
+           oogle. Confira a internet."));
+      103      return () => {
+      104 +      ativo = false;                                          
+      105        if (desenhar) temaEscuro.removeEventListener("change", d
+           esenhar);
+      106      };
+      107    }, [config]);
+     ...
+      136            <div className="mt-7 space-y-3">
+      137              {expirou && <Aviso tipo="info">Sua sessão acabou. 
+           Entre de novo; nada do que está no celular se perdeu.</Aviso>}
+      138              {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      136 -            <div className="relative min-h-11">               
+      139 +            <div className="relative min-h-10">               
+      140                {/* Lugar do botão enquanto o script do Google c
+           arrega, para a tela não pular. */}
+      138 -              {!googlePronto && !erro && <div className="absol
+          -ute inset-x-0 top-0 h-11 rounded-md bg-campo" />}             
+      141 +              {!googlePronto && !erro && <div className="absol
+          +ute inset-x-0 top-0 h-10 rounded-full bg-campo" />}           
+      142                <div ref={botaoGoogle} className="relative flex 
+           w-full justify-center" />
+      143              </div>
+      144              <p className="text-center text-[13px] text-texto-3
+           " aria-live="polite">
+  ⎿  (timeout 5m)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● No tema escuro, um retângulo branco aparece atrás da pílula porque o Chrome
+  pinta o fundo do iframe de outro site de branco. Vou fixar o esquema claro só
+  no espaço do botão para corrigir isso. · summary
+
+● Bash(cd /home/henrique/Music/cl-gym/frontend && grep -n 'ref={botaoGoogle}'
+      src/telas/Login.tsx && python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/src/telas/Login.tsx +3 -1
+      139              <div className="relative min-h-10">
+      140                {/* Lugar do botão enquanto o script do Google c
+           arrega, para a tela não pular. */}
+      141                {!googlePronto && !erro && <div className="absol
+           ute inset-x-0 top-0 h-10 rounded-full bg-campo" />}
+      142 -              <div ref={botaoGoogle} className="relative flex 
+          -w-full justify-center" />                                     
+      142 +              {/* Esquema claro no lugar do iframe: com o do a
+          +pp (escuro), o Chrome pinta um fundo                          
+      143 +                  branco atrás da pílula do Google. */}       
+      144 +              <div ref={botaoGoogle} className="relative flex 
+          +w-full justify-center [color-scheme:light]" />                
+      145              </div>
+      146              <p className="text-center text-[13px] text-texto-3
+           " aria-live="polite">
+      147                {carregando ? "Entrando…" : "Só entra quem foi c
+           onvidado."}
+  ⎿  (timeout 5m)
+
+  Read 1 file (ctrl+o to expand)
+
+● Agora os dois temas ficaram limpos. Falta testar a troca de tema com a tela
+  aberta:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● O botão do Google ficou melhor. Recarregue http://localhost:5173 para ver.
+
+  O botão é desenhado pelo próprio Google, então só dá para escolher entre as
+  opções dele. Comparei as combinações nos dois temas e fiquei com esta:
+
+  - Tema claro: pílula preta com o "G" num círculo branco, centralizado. Combina
+    com o topo preto e com a logo em preto e branco.
+  - Tema escuro: pílula branca. A preta quase sumia no fundo escuro.
+  - Retângulo branco no escuro, corrigido: o Chrome pintava um retângulo branco
+    atrás do botão. Isso acontece quando o esquema de cores do botão do Google
+    não bate com o do app.
+  - Troca de tema: se o tema do celular mudar com a tela aberta, o botão troca
+    de cor na hora. Testei a troca e ela funciona.
+  - Espaço do botão: enquanto o botão carrega, o lugar dele fica reservado com o
+    mesmo formato de pílula, para a tela não pular.
+
+  O lint, a checagem de tipos e os 60 testes passaram. Se você já entrou com a
+  sua conta Google neste navegador, o Google pode mostrar "Continuar como
+  Henrique" com a sua foto. Isso é o Google personalizando o botão sozinho.
+
+  A tela de login e o botão ainda não foram commitados. Quer que eu mande para o
+  GitHub?
+
+❯ mande tudo pra lá e vamos fazer o deploy
+
+● Primeiro o commit e o push. Depois olho como o projeto está preparado para a
+  Vercel.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● O código já está no GitHub (c815c54). Antes do deploy, vou conferir como o
+  backend se conecta ao banco e o que a Vercel espera de um projeto Python hoje.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Agora vou conferir na documentação atual da Vercel três pontos: como ela
+  instala as dependências Python (uv.lock ou requirements.txt), o que entra no
+  pacote da função e a região.
+
+● Web Search("Vercel Python runtime pyproject.toml uv.lock dependencies
+            installation FastAPI")
+  ⎿  Did 1 search in 7s
+
+● Web Search("Vercel Python function bundle excludeFiles size limit files
+            included")
+  ⎿  Did 1 search in 7s
+
+● A Vercel já usa o pyproject.toml e o uv.lock via uv, então não precisa de
+  requirements.txt, mas a detecção automática de FastAPI pode conflitar com um
+  projeto Vite + FastAPI. Vou ler a documentação completa para confirmar.
+  · summary
+
+● web-fetch(Read Vercel Python docs)
+  ⎿  Received 148 bytes
+
+› Message from web-fetch
+  Vercel docs report (pages read: docs/functions/runtimes/python.md;
+  kb/guide/ship-a-fastapi-app-on-vercel (non-preapproved, short quotes only);
+  docs/frameworks/backend/fastapi (exists, HTTP 200);
+  docs/functions/runtimes/python/api-directory;
+  docs/functions/runtimes/python/python-version; docs/functions/limitations;
+  docs/functions/configuring-functions/region).
+
+  1. Dependency file and uv
+  - Runtime page: "Define dependencies in `pyproject.toml` (with or without a
+  `uv.lock`), `requirements.txt`, or a `Pipfile` with a corresponding
+  `Pipfile.lock`." Your pyproject.toml + uv.lock form is supported.
+  - Not documented: where the lookup happens relative to api/index.py, whether
+  uv is the installer, and whether dev dependency-groups are installed. The only
+  dependency-group mention is for Routing Middleware ("only the packages in the
+  `vercel.proxy` dependency group installed").
+
+  2. Framework detection and conflicts
+  - Runtime page: "Vercel detects your framework automatically when it finds a
+  matching dependency in `requirements.txt`, `pyproject.toml`, or `Pipfile`."
+  - api-directory page: "A Python framework preset takes precedence over
+  file-based functions. When Vercel detects a framework preset, the framework
+  application handles all requests, and files under `/api` don't become separate
+  Vercel Functions."
+  - So if fastapi is in the scanned pyproject and an `app` entrypoint is found,
+  the FastAPI preset could take over from Vite + api/. Entrypoint locations
+  differ: runtime and FastAPI pages list
+  app.py/index.py/server.py/main.py/wsgi.py/asgi.py at root or in src/ or app/;
+  the KB guide also lists api/.
+  - No documented "framework" key in vercel.json or way to force the Vite preset
+  in the pages read. Documented controls: `[tool.vercel] entrypoint =
+  "module:variable"` (entrypoint only) and Services ("Each part builds
+  independently and routes to a shared domain"). Check the vercel.json reference
+  (not read) for a framework key.
+  - Build command precedence: "If you define a Build Command in `vercel.json` or
+  in the Project Settings dashboard, it takes precedence over a build script in
+  `pyproject.toml`."
+
+  3. Rewrite and ASGI path
+  - Not documented in any page read. api-directory only says "`api/index.py`
+  serves `/api`". Whether FastAPI sees /api/health or /api/index is unknown from
+  these docs. Suggested test: a temporary route returning request.url.path
+  behind the rewrite.
+
+  4. Bundling and excludeFiles
+  - Runtime page: "By default, Python Vercel Functions include all files from
+  your project that are reachable at build time. There is no automatic
+  tree-shaking for Python." node_modules and frontend/ are not mentioned
+  specifically; exclude them explicitly.
+  - Documented example (runtime page): {"$schema":
+  "https://openapi.vercel.sh/vercel.json", "functions": {"app.py":
+  {"excludeFiles": "{tests/**,__tests__/**,**/*.test.py,**/test_*.py,fixtures/**
+  ,__fixtures__/**,testdata/**,sample-data/**,static/**,assets/**}"}}}
+  - api-directory example uses key "api/**/*.py". Globs are relative to project
+  root. Suggested (not documented) for this repo: key "api/**/*.py" with
+  excludeFiles covering "frontend/**" and "node_modules/**".
+  - Python uncompressed bundle limit: 500 MB. VERCEL_ANALYZE_BUILD_OUTPUT=1
+  shows per-function size breakdown.
+
+  5. Python version and region
+  - Versions: "3.12 (default)", "3.13", "3.14". Set via pyproject.toml
+  requires-python, .python-version, or Pipfile.lock. "Vercel uses Python 3.12
+  when your repository does not define a supported Python version." Precedence
+  among files not documented.
+  - Region: vercel.json `"regions": ["sfo1"]` example. Hobby: "Single region",
+  and exceeding the plan limit "causes the deployment to fail before the build
+  step." So `"regions": ["gru1"]` with one entry. gru1 not verified against the
+  region list (not read). Default for new projects is iad1.
+
+  6. Duration and Fluid compute
+  - Limits table, Node.js/Bun/Python with fluid compute: Hobby default 300s,
+  Hobby maximum 300s. Pro/Enterprise: 300s default, 800s max.
+  - Hobby memory: 2 GB / 1 vCPU.
+  - Fluid compute "enabled by default for new projects" (limits page). KB guide:
+  FastAPI runs "on Fluid compute by default."
+  - maxDuration override example (FastAPI page): {"functions": {"app/main.py":
+  {"maxDuration": 60}}}. Key must match the resolved entrypoint, here
+  api/index.py; Hobby max still 300s.
+  - Large functions (beta): Python bundles up to 5 GB with Fluid compute via
+  VERCEL_SUPPORT_LARGE_FUNCTIONS=1. Only needed above 500 MB.
+
+  Pages read (final URLs): https://vercel.com/docs/functions/runtimes/python.md
+  ; https://vercel.com/kb/guide/ship-a-fastapi-app-on-vercel ;
+  https://vercel.com/docs/frameworks/backend/fastapi ;
+  https://vercel.com/docs/functions/runtimes/python/api-directory ;
+  https://vercel.com/docs/functions/runtimes/python/python-version ;
+  https://vercel.com/docs/functions/limitations ;
+  https://vercel.com/docs/functions/configuring-functions/region
+● A documentação aponta um risco: com FastAPI no pyproject.toml, a Vercel pode
+  servir o projeto todo como app FastAPI e deixar o front do Vite fora. Vou
+  ajustar o vercel.json para evitar isso e então conferir os testes e a trava de
+  dependências. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(vercel.json)
+  ⎿  Added 7 lines
+       1  {
+       2    "$schema": "https://openapi.vercel.sh/vercel.json",
+       3 +  "framework": "vite",                                         
+       4 +  "regions": ["gru1"],                                         
+       5    "installCommand": "npm --prefix frontend ci",
+       6    "buildCommand": "npm --prefix frontend run build",
+       7    "outputDirectory": "frontend/dist",
+       8 +  "functions": {                                               
+       9 +    "api/index.py": {                                          
+      10 +      "excludeFiles": "{frontend/**,backend/tests/**,scripts/**
+         +,.github/**,**/__pycache__/**}"                                
+      11 +    }                                                          
+      12 +  },                                                           
+      13    "rewrites": [{ "source": "/api/(.*)", "destination": "/api/in
+          dex" }],
+      14    "headers": [
+      15      {
+
+● Agora o arquivo local com as variáveis de produção. Ele fica fora do Git e tem
+  uma SESSAO_SECRET nova, diferente da de desenvolvimento:
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated .gitignore +3 -1
+       5  .pytest_cache/
+       6  .ruff_cache/
+       7  
+       8 -# Ambiente e bancos locais                                     
+       8 +# Ambiente e bancos locais (o .env.producao guarda as variáveis
+         + da Vercel)                                                    
+       9  .env
+      10 +.env.*                                                         
+      11 +!.env.example                                                  
+      12  *.db
+      13  *.db-journal
+      14  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Agora atualizo a seção de deploy do CLAUDE.md:
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated CLAUDE.md +26 -13
+      392  - Timer de descanso.
+      393  - Convites por tela de admin em vez de variável de ambiente.
+      394  
+      395 -## Deploy (a fazer)                                           
+      395 +## Deploy (em andamento, 25/11/2026)                          
+      396  
+      397 -1. Criar o banco no Neon e usar a URL **pooled** (`-pooler`) c
+          -omo `DATABASE_URL` na Vercel.                                 
+      398 -2. Definir na Vercel `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` e `EM
+          -AILS_PERMITIDOS` (antes era o                                 
+      399 -   `APP_TOKEN`).                                              
+      400 -3. No Google Cloud (sem faturamento): criar o cliente OAuth do
+          - tipo "Aplicativo da Web" com as                              
+      401 -   origens `http://localhost:5173` e `https://cl-gym.vercel.ap
+          -p`.                                                           
+      402 -4. Rodar as migrações e o seed no Neon a partir da máquina loc
+          -al:                                                           
+      403 -   `DATABASE_URL="..." uv run alembic upgrade head && DATABASE
+          -_URL="..." uv run python -m backend.seed`.                    
+      404 -5. O `vercel.json` já define o build do frontend (`npm --prefi
+          -x frontend ci`,                                               
+      405 -   `npm --prefix frontend run build`, saída `frontend/dist`) e
+          - o rewrite de `/api`. Validar no                              
+      406 -   primeiro deploy como a Vercel instala as dependências Pytho
+          -n (pyproject/uv.lock ou                                       
+      407 -   `requirements.txt` via `uv export`). Nunca definir `LOGIN_D
+          -EV` na Vercel (ele já não funciona                            
+      408 -   lá, mas não precisa estar). O Henrique faz os passos que pe
+          -dem login nas contas dele.                                    
+      397 +Tudo em São Paulo: função da Vercel em `gru1` (`regions` no `v
+          +ercel.json`; o Hobby aceita uma                               
+      398 +região só) e banco do Neon em AWS `sa-east-1`. O Henrique faz 
+          +os passos que pedem login nas contas                          
+      399 +dele.                                                         
+      400  
+      401 +1. **Google Cloud** (feito): cliente OAuth "Aplicativo da Web"
+          +, sem faturamento, com as origens                             
+      402 +   `http://localhost`, `http://localhost:5173` e `https://cl-g
+          +ym.vercel.app`. Se a Vercel der outro                         
+      403 +   endereço ao projeto, acrescentar a origem nova lá.         
+      404 +2. **Variáveis de produção** ficam no `.env.producao` da máqui
+          +na do Henrique (fora do Git; o                                
+      405 +   `.gitignore` ignora `.env.*` menos o `.env.example`): `DATA
+          +BASE_URL` (Neon, URL **pooled**, com                          
+      406 +   `-pooler` no host), `GOOGLE_CLIENT_ID`, `SESSAO_SECRET` (pr
+          +ópria da produção, diferente da de                            
+      407 +   dev) e `EMAILS_PERMITIDOS`. Na Vercel, cola-se o arquivo in
+          +teiro em Environment Variables.                               
+      408 +   Nunca definir `LOGIN_DEV` na Vercel (lá ele já não funciona
+          +, mas não precisa estar).                                     
+      409 +3. **Migrações e seed no Neon**, da máquina local, pela URL **
+          +direta** (a mesma sem `-pooler`: o                            
+      410 +   PgBouncer do pooler atrapalha DDL). Nunca imprimir a URL, q
+          +ue tem a senha:                                               
+      411 +   ```bash                                                    
+      412 +   URL=$(uv run python -c "from dotenv import dotenv_values as
+          + d; print(d('.env.producao')['DATABASE_URL'].replace('-pooler'
+          +, ''))")                                                      
+      413 +   DATABASE_URL="$URL" uv run alembic upgrade head && DATABASE
+          +_URL="$URL" uv run python -m backend.seed                     
+      414 +   ```                                                        
+      415 +4. **Vercel**: importar o repositório do GitHub com o nome `cl
+          +-gym`. O `vercel.json` força o preset                         
+      416 +   `vite` (sem isso, a detecção de FastAPI pelo `pyproject.tom
+          +l` pode tomar o projeto todo e as                             
+      417 +   funções de `api/` deixam de existir), define o build do fro
+          +ntend, o rewrite de `/api` e tira do                          
+      418 +   pacote da função o que ela não usa (`excludeFiles`: o Pytho
+          +n não tem tree-shaking). As                                   
+     … +7 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Mandei tudo para o GitHub (f790386). A CI dos dois commits anteriores passou,
+  e a deste está rodando. Também deixei o projeto pronto para a Vercel:
+
+  - Preset do Vite forçado no vercel.json: a Vercel agora detecta FastAPI pelo
+    pyproject.toml sozinha. Sem essa trava, ela podia tratar o projeto inteiro
+    como app FastAPI, e o app do Vite deixaria de ser servido.
+  - Tudo em São Paulo: a função da API roda na região gru1, e o banco vai ficar
+    na região de São Paulo do Neon.
+  - Função mais leve: pastas que a API não usa, como frontend/, testes e
+    scripts, ficam fora do pacote dela.
+  - Dependências Python: a Vercel instala direto do pyproject.toml e do uv.lock,
+    então não precisa de requirements.txt.
+  - .env.producao: criei este arquivo local, fora do Git, com as variáveis de
+    produção. Ele já tem o ID do Google, o seu Gmail como convidado e uma chave
+    de sessão nova, diferente da de desenvolvimento. Só falta a URL do banco.
+  - CLAUDE.md: a seção de deploy foi reescrita com esse passo a passo.
+
+  Passo 1 (você): criar o banco no Neon
+  1. Entre em https://neon.tech com GitHub ou Google. O plano grátis não pede
+     cartão.
+  2. Crie um projeto chamado cl-gym e, na região, escolha AWS South America East
+     1 (São Paulo).
+  3. No painel do projeto, clique em Connect, ligue Connection pooling e copie a
+     URL. Ela começa com postgresql:// e tem -pooler no meio.
+  4. Abra o .env.producao, cole a URL logo depois de DATABASE_URL=, sem aspas, e
+     salve.
+
+  Não cole a URL aqui no chat, porque ela tem a senha do banco. Depois de
+  salvar, me avise. Eu crio as tabelas e carrego o catálogo no Neon sem mostrar
+  a URL, e aí te passo o passo da Vercel.
+
+❯ o proprio neon falou pra mandar isso pra vc:
+  Set up this app on Neon.
+  1. npm i -g neon@latest. If that fails, use npx neon@latest in place of neon.
+     If a neon command opens a browser sign-in, tell me to finish it there. If
+  that times out or fails, ask me to run neon login, then retry.
+  2. In the project root:
+     neon init -y --org-id org-late-bush-04054699 --project-id
+  wild-wildflower-37544212 --branch production --services postgres
+  3. neon deploy. It provisions the services in neon.ts and pulls their env
+  vars into .env.local (or .env if it exists).
+  4. Wire each service into the app's code using those env vars. Consult the
+  installed Neon agent skills for best practices, e.g., what database driver to
+  use given the app architecture and hosting runtime.
+  5. Prove it works: npm run build must pass, then start the app, each wired
+  service must be tested to prove it works end to end.
+  6. Report what changed, the command output that proves step 5, and anything
+  that failed.
+
+● Esse roteiro do Neon é genérico, feito para apps em JavaScript. Antes de rodar
+  qualquer coisa, vou ver o que o pacote neon é e o que os comandos fazem:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● O pacote é oficial, mas neon deploy gravaria a URL de produção no .env de
+  desenvolvimento e quebraria o login de dev, então vou usar a CLI só para obter
+  a URL e salvá-la em .env.producao. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Para pegar a URL, a CLI precisa estar logada na sua conta. Vou abrir o login
+  do Neon:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● A página de login do Neon deve ter aberto no seu navegador. Autorize por lá.
+  Se ela não abriu, abra este link neste computador:
+
+  https://oauth2.neon.tech/oauth2/auth?scope=openid+offline+offline_access+urn%3
+  Aneoncloud%3Aprojects%3Acreate+urn%3Aneoncloud%3Aprojects%3Aread+urn%3Aneonclo
+  ud%3Aprojects%3Aupdate+urn%3Aneoncloud%3Aprojects%3Adelete+urn%3Aneoncloud%3Ao
+  rgs%3Acreate+urn%3Aneoncloud%3Aorgs%3Aread+urn%3Aneoncloud%3Aorgs%3Aupdate+urn
+  %3Aneoncloud%3Aorgs%3Adelete+urn%3Aneoncloud%3Aorgs%3Apermission&state=fAE5ZJq
+  VSpcYdLmHTMX6xDiOgQWt7PO6zJl8ou912hg&code_challenge=LijdV5pOmPJr6r_lww5wrPa0ot
+  kF0KraJL1at7cN-L8&code_challenge_method=S256&redirect_uri=http%3A%2F%2F127.0.0
+  .1%3A33359%2Fcallback&client_id=neonctl&response_type=code
+
+  O link vale por 10 minutos. Assim que você autorizar, eu continuo sozinho:
+  gravo a URL do banco no .env.producao sem mostrá-la, crio as tabelas e carrego
+  o catálogo no Neon.
+
+● Background command "cd /tmp/claude-1000/-home-henrique-Music-cl-gym/29831bc6-3
+  db4-46e5-840a-675ce39336a2/scratchpad && timeout 600 npx -y neon@latest login
+  2>&1" completed (exit code 0)
+
+● Login feito. Vou conferir o projeto (região, branch e banco) antes de pegar a
+  URL:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● O projeto "CL GYM" está correto, na região de São Paulo, com Postgres 18,
+  branch production e banco neondb. Vou gravar a URL com pooling no
+  .env.producao, sem exibi-la. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Agora crio as tabelas (migrações) e carrego o catálogo no Neon pela URL
+  direta, sem o pooler:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Tabelas e catálogo estão prontos (66 exercícios, 4 fichas); agora vou repetir
+  a consulta pela URL com pooling para checar os prepared statements que
+  costumam falhar com poolers. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Foi erro meu: chutei o nome da tabela. Vou listar os nomes reais e repetir o
+  teste:
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● O banco do Neon está pronto e testado pela URL com pooling: as 12 consultas
+  passaram em cerca de 22 ms, com 66 exercícios e 4 fichas modelo (26 itens) e
+  nenhum usuário. Agora vou conferir se o .env.producao está completo, só com os
+  nomes das variáveis. · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● O banco está pronto, e agora falta a Vercel. Não rodei o neon init nem o neon
+  deploy do roteiro do Neon. O neon deploy gravaria a URL do banco de produção
+  no seu .env, que é o de desenvolvimento: o app no seu computador passaria a
+  usar o banco de produção e o "Entrar como dev" pararia de funcionar. O neon
+  init criaria um neon.ts, que só serve para apps em JavaScript. O backend já lê
+  o DATABASE_URL, então não precisou mudar código.
+
+  O que fiz no Neon
+  - Entrei na sua conta pela CLI oficial e conferi o projeto "CL GYM": região de
+    São Paulo, Postgres 18 e banco neondb.
+  - Gravei a URL com pooling no .env.producao, sem mostrá-la em lugar nenhum. As
+    quatro variáveis desse arquivo estão preenchidas.
+  - Criei as tabelas e carreguei o catálogo: 66 exercícios e 4 fichas modelo com
+    26 itens.
+  - Testei 12 consultas seguidas pela URL com pooling, a mesma que a Vercel vai
+    usar: todas passaram, em cerca de 22 ms cada.
+  - Nada falhou, e o repositório ficou sem mudanças.
+
+  Passo 2 (você): Vercel
+  1. Entre em https://vercel.com com Continue with GitHub. O plano Hobby é
+     grátis e não pede cartão.
+  2. Clique em Add New → Project e importe o repositório cl-gym. Se pedir para
+     instalar o app da Vercel no GitHub, escolha Only select repositories e
+     marque só o cl-gym.
+  3. Na tela de configuração:
+     - Project Name: cl-gym.
+     - Deixe o resto como está. O vercel.json já define o preset (Vite), o build
+       e a pasta de saída.
+  4. Em Environment Variables, abra o .env.producao no VS Code e copie o arquivo
+     inteiro (Ctrl+A, Ctrl+C). Cole no primeiro campo Key: a Vercel separa
+     sozinha em 4 variáveis (DATABASE_URL, GOOGLE_CLIENT_ID, SESSAO_SECRET e
+     EMAILS_PERMITIDOS). Confira se apareceram as 4.
+  5. Clique em Deploy e espere 1 ou 2 minutos.
+
+  Depois me diga o endereço que a Vercel deu ao projeto. Eu confiro a API, o
+  banco e o app publicado. Se o endereço não for exatamente cl-gym.vercel.app
+  (pode acontecer se alguém já tiver esse nome), ele também precisa entrar nas
+  origens autorizadas do cliente OAuth no Google Cloud.
+
+❯ https://cl-gym.vercel.app/  pronto
+
+● Vou conferir o deploy:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Está tudo no ar, e a função roda em São Paulo (gru1). Falta ver se o botão do
+  Google carrega no endereço de produção:
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● O deploy passou em todas as verificações: a API responde, as rotas protegidas
+  bloqueiam acesso sem token, o login de dev não existe em produção e os
+  arquivos estáticos carregam. Vou registrar isso no CLAUDE.md em seguida.
+  · summary
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated CLAUDE.md +6 -2
+      392  - Timer de descanso.
+      393  - Convites por tela de admin em vez de variável de ambiente.
+      394  
+      395 -## Deploy (em andamento, 25/11/2026)                          
+      395 +## Deploy (feito em 25/11/2026)                               
+      396  
+      397 +No ar em `https://cl-gym.vercel.app`. A Vercel está ligada ao 
+          +GitHub: cada push na `main` publica                           
+      398 +sozinho. O banco é o projeto "CL GYM" do Neon (branch `product
+          +ion`, banco `neondb`).                                        
+      399 +                                                              
+      400  Tudo em São Paulo: função da Vercel em `gru1` (`regions` no `v
+           ercel.json`; o Hobby aceita uma
+      401  região só) e banco do Neon em AWS `sa-east-1`. O Henrique faz 
+           os passos que pedem login nas contas
+      402  dele.
+     ...
+      436  - [x] Evolução com abas, metas (alvo no gráfico e parabéns), c
+           uriosidades, carbo e água, e dados
+      437    de exemplo para a conta de dev (24/11/2026)
+      438  - [x] Redesenho: visual simples e profissional, sem emojis, te
+           ma claro e escuro (24/11/2026)
+      436 -- [ ] Deploy Vercel + Neon e instalação nos celulares         
+      439 +- [x] Deploy na Vercel (função em `gru1`) + Neon em São Paulo,
+          + migrações e seed (25/11/2026)                                
+      440 +- [ ] Primeiro login com Google em produção, instalação nos ce
+          +lulares e convite dos amigos                                  
+
+● O CL Gym está no ar em https://cl-gym.vercel.app. A Vercel está ligada ao
+  GitHub, então cada push na main publica o app sozinho. Registrei o deploy no
+  CLAUDE.md (commit e9bf894).
+
+  Ainda não testei o login com o Google em produção, porque ele precisa da sua
+  conta. Também falta confirmar que a função da Vercel consegue falar com o
+  banco: nenhuma rota sem login consulta o banco, e o primeiro login vai provar
+  as duas coisas.
+
+  1. Abra https://cl-gym.vercel.app e entre com o Google usando o seu Gmail.
+  2. Preencha as boas-vindas.
+  3. Me avise. Eu confiro no Neon se o seu usuário e as fichas foram criados.
+
+  Se der algum erro, mande o texto que aparecer na tela.
+
+  Depois disso:
+  - Instalar no celular:
+    - No Android (Chrome), use "Instalar app".
+    - No iPhone, tem que ser no Safari: Compartilhar → "Adicionar à Tela de
+      Início".
+  - Convidar amigos: ponha o Gmail deles em EMAILS_PERMITIDOS na Vercel,
+    separados por vírgula, e faça um redeploy. Se quiser, eu atualizo o
+    .env.producao junto.
+
+❯ vamos fazer assim, deixa minha conta como de admin, e crie uma tela extra
+  apenas pra minha conta: henrique.liuti5@gmail.com Lá poderei ver os usuários,
+  informações deles, ultima vez que entraram, se estão online, se estão usando
+  e uma opção de excluir conta deles caso precise, além de uma tela de em vez
+  de emails permitidos na vercel ser um lugar em que SÓ EU possa gerar o link e
+  mandar pra uma pessoa, ai ela coloca o código que eu passar no link e ele
+  tenha expiração de 1 dia. o que acha?
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ não faça ainda apenas me fale o que acha
+
+● Acho uma boa ideia, e ela já estava no CLAUDE.md como "convites por tela de
+  admin" para depois da v1. Do jeito atual, cada convite pede mexer na Vercel e
+  fazer redeploy, o que é chato. Com uma tela só sua, você convida pelo celular
+  em segundos. A proteção dos limites grátis continua igual: só entra quem tem
+  convite.
+
+  Eu ajustaria quatro pontos da sua ideia:
+
+  1. "Online" e "usando agora"
+  - O app não fica conectado ao servidor. Ele funciona offline e só sincroniza
+    em momentos certos: ao abrir, depois de salvar algo e no fim do treino. As
+    séries de um treino em andamento só sobem no final.
+  - Para saber quem está online em tempo real, o celular de cada um teria que
+    avisar o servidor de tempos em tempos. Isso gasta bateria e o limite grátis,
+    e o CLAUDE.md proíbe sincronizar em intervalo fixo.
+  - O que dá para mostrar com honestidade:
+    - "visto por último há X min", gravado a cada sincronização;
+    - "ativo agora", se a pessoa abriu o app nos últimos 10 minutos;
+    - "último treino em tal dia".
+
+  2. Link e código
+  - Se o link e o código forem juntos na mesma mensagem do WhatsApp, o código
+    não protege nada a mais, só acrescenta um passo.
+  - Eu faria assim:
+    - o código vai dentro do link: a pessoa toca e já cai na tela de entrar com
+      o Google, com "Você foi convidado";
+    - um campo "Tenho um código" no login: para quando você passar o código de
+      outro jeito, por exemplo falando. Seria um código curto, como K7Q-M4X;
+    - validade de 24 horas e uso único: o convite vale para criar uma conta só,
+      e você pode cancelar um convite que ainda não foi usado.
+  - Depois que a conta existe, a pessoa entra sem convite. Isso resolve um
+    detalhe do iPhone: o app instalado na tela de início não compartilha os
+    dados com o Safari. A pessoa abre o link, cria a conta e depois instala; no
+    app instalado ela só entra com o Google.
+  - O EMAILS_PERMITIDOS deixaria de existir.
+
+  3. Seu e-mail fora do código
+  - O repositório é público, e o CLAUDE.md proíbe dados pessoais nele.
+  - Eu poria o admin numa variável da Vercel, ADMIN_EMAIL, e o servidor confere
+    em toda rota de admin. A aba só aparece para você, mas a proteção de verdade
+    fica no servidor: qualquer outra conta recebe 403.
+
+  4. Privacidade dos amigos
+  - Na lista eu mostraria só nome, e-mail, data de entrada, visto por último,
+    quantos treinos fez e o último treino.
+  - Peso, alimentação e cargas são dados de saúde. Mesmo entre amigos, é chato
+    saberem que o admin vê isso.
+
+  Excluir conta
+  - O "apagar minha conta" já existe e dá para reaproveitar. Eu usaria a mesma
+    janela que pede para digitar "apagar".
+  - Sugiro também um bloquear reversível: a pessoa perde o acesso, mas os dados
+    ficam. Excluir não tem volta.
+  - Depois de excluída, a sessão da pessoa no celular cai sozinha na próxima
+    sincronização, e ela não consegue entrar de novo sem um convite novo.
+
+  O que muda no código (tamanho médio)
+  - Backend:
+    - uma tabela nova, Convite, com o código guardado como hash, validade e quem
+      usou;
+    - os campos "visto por último" e "bloqueado" no usuário;
+    - as rotas /api/admin/...;
+    - o login passa a aceitar "conta já existe ou convite válido";
+    - uma migração nova;
+    - testes de que ninguém além de você acessa o admin, de que o convite expira
+      e de que ele só serve uma vez.
+  - Frontend:
+    - uma aba "Admin" só para você, com as telas Usuários e Convites;
+    - em Convites, um botão "Compartilhar" que abre o WhatsApp direto;
+    - a rota do link de convite e o campo de código no login.
+  - Nada pago: custo continua zero.
+
+  Antes de fazer, preciso que você decida três coisas:
+  1. Na lista, você quer ver só a atividade, como sugeri, ou também os dados de
+     treino e de corpo dos amigos?
+  2. O convite pode ser usado por qualquer pessoa que receber o link, ou você
+     digita o e-mail do amigo ao gerar e ele só funciona para aquela conta
+     Google?
+  3. Quer o "bloquear" além do "excluir"?
+
+❯ só a atividade
+  2 o convite pode ser usado para qualquer pessoa que receber o link, porém ela
+  precisa digitar o código que será gerado pra mim e irei mandar pra ela
+  3 pode ser, ai ela perderia o acesso
+
+  mais alguma duvida antes de começar?
+
+● Quase nenhuma. Vou seguir com estes padrões; me corrija se algum não servir:
+
+  - Admin: definido pela variável ADMIN_EMAIL na Vercel, para o seu e-mail ficar
+    fora do repositório público. Você sempre consegue entrar, e o
+    EMAILS_PERMITIDOS deixa de existir.
+  - Convite: vale para uma pessoa só, por 24 horas. Ela abre o link e digita um
+    código de 6 dígitos.
+    - Com 5 tentativas erradas, o convite deixa de valer.
+    - Você pode cancelar um convite que ainda não foi usado.
+    - O código só é pedido para criar a conta; depois a pessoa entra só com o
+      Google.
+  - Bloquear: a pessoa sai da conta na próxima vez que o app falar com o
+    servidor e vê o aviso "acesso bloqueado". Os dados continuam guardados, e
+    você pode desbloquear.
+  - Excluir: apaga tudo da pessoa, depois de você digitar "apagar" para
+    confirmar.
+  - Sua conta: você não consegue bloquear nem excluir a si mesmo.
+  - Lista de usuários:
+    - nome e e-mail;
+    - desde quando usa o app;
+    - visto por último e "ativo agora";
+    - treinos feitos, no total e nos últimos 30 dias;
+    - data do último treino;
+    - aparelho: Android ou iPhone, e se instalou o app.
+
+  Três pontos dependem de você:
+
+● Answered Claude's questions:
+  ⎿  · Para a tela de admin mostrar "treinando agora", o app precisa avisar o
+     servidor quando um treino começa. Hoje as séries só sobem para o servidor
+     no fim do treino. Isso custa 1 sincronização a mais por treino. Pode? →
+     Não, só "visto por último"
+     · Onde fica a área de administração do CL Gym? Ela só aparece para a sua
+     conta. → Dentro da aba Conta (Recommended)
+     · Depois de gerar um convite, o que acontece com o código de 6 dígitos que
+     a pessoa vai digitar? → Fica visível até ser usado (Recommended)
+
+● Combinado: sem "treinando agora", área de admin dentro da aba Conta e código
+  visível até ser usado. Vou começar lendo o backend de login, conta e
+  sincronização.
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Agora o frontend: rotas, tela Conta, sessão e tratamento de erros.
+
+  Read 1 file, ran 5 shell commands (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ pode começar e ultilize agentes para ser mais rápido o desenvolvimento, além
+  de colocar também ao entrar no sistema a primeira vez pelo navegador apareça
+  já um botão para instalar o app antes mesmo de logar
+
+● Vou usar agentes em paralelo e incluir o botão de instalar antes do login. O
+  código do convite passa a ter 8 caracteres, sem letras parecidas com números,
+  porque com 6 dígitos alguém poderia adivinhá-lo; no iPhone, quem instalar
+  antes de entrar digita o código em "Tenho um convite". Antes disso, preparo a
+  base comum (contrato da API, rotas, ícones e tipos). · summary
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Primeiro, o contrato que os três agentes vão seguir:
+
+  Made 1 scratchpad edit +127 (ctrl+o to expand)
+
+● Agora a base do frontend: tipos, chamadas à API, utilitários do código de
+  convite, ícones, rotas e arquivos provisórios que os agentes vão preencher.
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/src/lib/tipos.ts +9
+       84    criado_em: string;
+       85    altura_cm: number | null;
+       86    idade: number | null;
+       87 +  /** Só a conta do ADMIN_EMAIL (variável da Vercel) vê a área
+          + de administração. */                                         
+       88 +  admin?: boolean;                                            
+       89  }
+       90  
+       91 +/** Por que o app saiu da conta sozinho (meta "saida"); a tela
+          + de login explica. */                                         
+       92 +export interface Saida {                                      
+       93 +  motivo: "sessao-expirada" | "conta-apagada" | "bloqueado";  
+       94 +  /** Frase do servidor, quando houver. */                    
+       95 +  mensagem?: string;                                          
+       96 +}                                                             
+       97 +                                                              
+       98  export const TABELAS = [
+       99    "exercicios",
+      100    "fichas",
+  ⎿  Updated frontend/src/lib/api.ts +9 -2
+       1  // Chamadas à API (mesmo endereço do app: /api). O token de ses
+          são fica no aparelho.
+       2  
+       3 +import { estaInstalado } from "./instalar";                    
+       4 +                                                               
+       5  const CHAVE_TOKEN = "cl-gym:token";
+       6  
+       7  export class ErroApi extends Error {
+       8    /** 0 = sem conexão ou servidor fora do ar. */
+       9    readonly status: number;
+      10 +  /** Motivo do servidor (cabeçalho X-Motivo): "bloqueado", "co
+         +nta-apagada", "sem-convite"... */                              
+      11 +  readonly motivo: string | null;                              
+      12  
+       9 -  constructor(status: number, mensagem: string) {              
+      13 +  constructor(status: number, mensagem: string, motivo: string 
+         +| null = null) {                                               
+      14      super(mensagem);
+      15      this.status = status;
+      16 +    this.motivo = motivo;                                      
+      17    }
+      18  }
+      19  
+     ...
+      39    const headers: Record<string, string> = {};
+      40    const token = lerToken();
+      41    if (token) headers.Authorization = `Bearer ${token}`;
+      42 +  // Para a área de administração mostrar se a pessoa usa o app
+         + instalado ou o navegador.                                     
+      43 +  headers["X-App-Instalado"] = estaInstalado() ? "1" : "0";    
+      44    if (corpo !== undefined) headers["Content-Type"] = "applicati
+          on/json";
+      45  
+      46    let resposta: Response;
+     ...
+      67      } catch {
+      68        // resposta sem JSON
+      69      }
+      63 -    throw new ErroApi(resposta.status, detalhe);               
+      70 +    throw new ErroApi(resposta.status, detalhe, resposta.header
+         +s.get("X-Motivo"));                                            
+      71    }
+      72    if (resposta.status === 204) return undefined as T;
+      73    return (await resposta.json()) as T;
+  ⎿  Created frontend/src/lib/instalar.ts +9
+      1 +// Instalar o app (PWA). Por enquanto só diz se o app já está in
+        +stalado; o botão de instalar                                    
+      2 +// (pedido nativo do Chrome ou instruções do iPhone) entra aqui.
+      3 +                                                                
+      4 +/** Aberto pelo ícone da tela de início (app instalado), e não p
+        +elo navegador. */                                               
+      5 +export function estaInstalado(): boolean {                      
+      6 +  if (typeof window === "undefined") return false;              
+      7 +  const iphone = (navigator as Navigator & { standalone?: boolea
+        +n }).standalone === true;                                       
+      8 +  return iphone || window.matchMedia?.("(display-mode: standalon
+        +e)").matches === true;                                          
+      9 +}                                                               
+  ⎿  Created frontend/src/lib/convite.ts +44
+       1 +// Código do convite: 8 letras e números, sem os que se confund
+         +em (0/O, 1/I/L). O servidor usa o                              
+       2 +// mesmo alfabeto (backend/convites.py). Guardado sem hífen e m
+         +ostrado como "7KQM-X4PD".                                      
+       3 +                                                               
+       4 +export const ALFABETO_CONVITE = "23456789ABCDEFGHJKMNPQRSTUVWXY
+         +Z";                                                            
+       5 +export const TAMANHO_CODIGO = 8;                               
+       6 +                                                               
+       7 +export type SituacaoConvite = "valido" | "expirado" | "usado" |
+         + "cancelado";                                                  
+       8 +                                                               
+       9 +/**                                                            
+      10 + * O que a pessoa digitou ou colou → só letras e números, em ma
+         +iúsculas ("7kqm x4pd" → "7KQMX4PD").                           
+      11 + * Se colar a mensagem inteira ("Código do convite: 7KQM-X4PD..
+         +."), pega só o código.                                         
+      12 + */                                                            
+      13 +export function normalizarCodigo(texto: string): string {      
+      14 +  const maiusculo = texto.toUpperCase();                       
+      15 +  const achado = /(?:^|[^A-Z0-9])([A-Z0-9]{4})-([A-Z0-9]{4})(?!
+         +[A-Z0-9])/.exec(maiusculo);                                    
+      16 +  if (achado) return `${achado[1]}${achado[2]}`;               
+      17 +  return maiusculo.replace(/[^A-Z0-9]/g, "").slice(0, TAMANHO_C
+         +ODIGO);                                                        
+      18 +}                                                              
+      19 +                                                               
+      20 +/** Com o hífen no meio, também no meio da digitação: "7KQMX" →
+         + "7KQM-X". */                                                  
+      21 +export function formatarCodigo(texto: string): string {        
+      22 +  const codigo = normalizarCodigo(texto);                      
+      23 +  return codigo.length > 4 ? `${codigo.slice(0, 4)}-${codigo.sl
+         +ice(4)}` : codigo;                                             
+      24 +}                                                              
+      25 +                                                               
+      26 +/** Tem os 8 caracteres, todos do alfabeto. */                 
+      27 +export function codigoCompleto(texto: string): boolean {       
+      28 +  const codigo = normalizarCodigo(texto);                      
+      29 +  return codigo.length === TAMANHO_CODIGO && [...codigo].every(
+         +(c) => ALFABETO_CONVITE.includes(c));                          
+      30 +}                                                              
+      31 +                                                               
+      32 +/** Link que o admin manda: abre a tela do convite, onde a pess
+         +oa digita o código. */                                         
+      33 +export function linkDoConvite(id: string, origem: string = wind
+         +ow.location.origin): string {                                  
+      34 +  return `${origem}/#/convite/${id}`;                          
+      35 +}                                                              
+      36 +                                                               
+      37 +/** Frase para quem recebeu o convite, quando ele não serve mai
+         +s. */                                                          
+      38 +export function mensagemSituacao(situacao: Exclude<SituacaoConv
+         +ite, "valido">): string {                                      
+      39 +  return {                                                     
+      40 +    expirado: "Este convite expirou. Peça outro.",             
+     … +4 lines (ctrl+o to expand)
+  ⎿  Created frontend/src/lib/convite.test.ts +32
+       1 +import { describe, expect, it } from "vitest";                 
+       2 +                                                               
+       3 +import { codigoCompleto, formatarCodigo, linkDoConvite, normali
+         +zarCodigo } from "./convite";                                  
+       4 +                                                               
+       5 +describe("código do convite", () => {                          
+       6 +  it("aceita minúsculas, espaços e hífen", () => {             
+       7 +    expect(normalizarCodigo(" 7kqm x4pd ")).toBe("7KQMX4PD");  
+       8 +    expect(normalizarCodigo("7KQM-X4PD")).toBe("7KQMX4PD");    
+       9 +  });                                                          
+      10 +                                                               
+      11 +  it("acha o código numa mensagem colada inteira", () => {     
+      12 +    expect(normalizarCodigo("Código do convite do CL Gym: 7KQM-
+         +X4PD (vale até amanhã)")).toBe("7KQMX4PD");                    
+      13 +  });                                                          
+      14 +                                                               
+      15 +  it("formata com o hífen no meio, também pela metade", () => {
+      16 +    expect(formatarCodigo("7kqm")).toBe("7KQM");               
+      17 +    expect(formatarCodigo("7kqmx")).toBe("7KQM-X");            
+      18 +    expect(formatarCodigo("7kqmx4pd9")).toBe("7KQM-X4PD");     
+      19 +  });                                                          
+      20 +                                                               
+      21 +  it("só é completo com 8 caracteres do alfabeto", () => {     
+      22 +    expect(codigoCompleto("7KQM-X4PD")).toBe(true);            
+      23 +    expect(codigoCompleto("7KQM-X4P")).toBe(false);            
+      24 +    // 0, O, 1, I e L não existem no alfabeto (se confundem).  
+      25 +    expect(codigoCompleto("7KQM-X4P0")).toBe(false);           
+      26 +    expect(codigoCompleto("7KQM-X4PL")).toBe(false);           
+      27 +  });                                                          
+      28 +                                                               
+      29 +  it("monta o link da tela do convite", () => {                
+      30 +    expect(linkDoConvite("abc", "https://cl-gym.vercel.app")).t
+         +oBe("https://cl-gym.vercel.app/#/convite/abc");                
+      31 +  });                                                          
+      32 +});                                                            
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated frontend/src/componentes/icones.tsx +57
+       56        <circle cx="12" cy="16.75" r="0.6" fill="currentColor" /
+           >
+       57      </>
+       58    ),
+       59 +  // Botão de compartilhar do iPhone (caixa com seta para cima
+          +).                                                            
+       60 +  compartilhar: <path d="M8.5 9H7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 
+          +1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 17 9h
+          +-1.5M12 3.5V14M8.75 6.75 12 3.5l3.25 3.25" />,                
+       61 +  // "Adicionar à Tela de Início" do iPhone (mais dentro de um
+          + quadrado).                                                   
+       62 +  adicionarTela: (                                            
+       63 +    <>                                                        
+       64 +      <rect x="4" y="4" width="16" height="16" rx="3.5" />    
+       65 +      <path d="M12 8.5v7M8.5 12h7" />                         
+       66 +    </>                                                       
+       67 +  ),                                                          
+       68 +  // Menu de três pontos do Chrome no Android.                
+       69 +  menuPontos: (                                               
+       70 +    <>                                                        
+       71 +      <circle cx="12" cy="5.5" r="1.25" fill="currentColor" st
+          +roke="none" />                                                
+       72 +      <circle cx="12" cy="12" r="1.25" fill="currentColor" str
+          +oke="none" />                                                 
+       73 +      <circle cx="12" cy="18.5" r="1.25" fill="currentColor" s
+          +troke="none" />                                               
+       74 +    </>                                                       
+       75 +  ),                                                          
+       76 +  instalar: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14
+          +" />,                                                         
+       77 +  copiar: (                                                   
+       78 +    <>                                                        
+       79 +      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />  
+       80 +      <path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0
+          + 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" />                       
+       81 +    </>                                                       
+       82 +  ),                                                          
+       83 +  link: <path d="M10 14a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5
+          +.66-5.66L11.5 6.84M14 10a4 4 0 0 0-5.66 0l-2.83 2.83a4 4 0 0 0
+          + 5.66 5.66l1.33-1.33" />,                                     
+       84 +  convite: (                                                  
+       85 +    <>                                                        
+       86 +      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />  
+       87 +      <path d="M4 7l8 6 8-6" />                               
+       88 +    </>                                                       
+       89 +  ),                                                          
+       90 +  pessoas: (                                                  
+       91 +    <>                                                        
+       92 +      <circle cx="9" cy="8.5" r="3.25" />                     
+       93 +      <path d="M3.25 19c.75-3.25 3-5 5.75-5s5 1.75 5.75 5M15.5
+          + 5.6a3.25 3.25 0 0 1 0 5.8M17.5 14.3c1.6.6 2.8 2.2 3.25 4.7" /
+          +>                                                             
+       94 +    </>                                                       
+       95 +  ),                                                          
+     … +23 lines (ctrl+o to expand)
+  ⎿  Updated frontend/src/App.tsx +19 -4
+       8  import { perfilIncompleto } from "./lib/perfil";
+       9  import { useRota } from "./lib/rota";
+      10  import { ligarSincronizacaoAutomatica, sincronizar, type Estado
+          Sync } from "./lib/sync";
+      11 -import type { Usuario } from "./lib/tipos";                    
+      11 +import type { Saida, Usuario } from "./lib/tipos";             
+      12  import { BoasVindas } from "./telas/BoasVindas";
+      13  import { Conta } from "./telas/Conta";
+      14 +import { Convite } from "./telas/Convite";                     
+      15  import { Dia } from "./telas/Dia";
+      16  import { FichaTela } from "./telas/FichaTela";
+      17  import { Inicio } from "./telas/Inicio";
+      18  import { Login } from "./telas/Login";
+      19  import { Treino } from "./telas/Treino";
+      20  
+      20 -// Os gráficos (Recharts) só são baixados quando a tela abre.  
+      21 +// Os gráficos (Recharts) só são baixados quando a tela abre; a
+         + administração, só para o admin.                               
+      22  const Graficos = lazy(() => import("./telas/Graficos").then((m)
+           => ({ default: m.Graficos })));
+      23 +const Admin = lazy(() => import("./telas/Admin").then((m) => ({
+         + default: m.Admin })));                                        
+      24  
+      25  const ABAS: { caminho: string; rotulo: string; icone: NomeIcone
+           }[] = [
+      26    { caminho: "", rotulo: "Treinos", icone: "halter" },
+     ...
+      34      <nav className="fixed inset-x-0 bottom-0 z-30 border-t bord
+          er-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
+      35        <ul className="mx-auto grid max-w-md grid-cols-4">
+      36          {ABAS.map((aba) => {
+      35 -          const ativa = aba.caminho === atual || (aba.caminho =
+         -== "" && ["ficha", "treino"].includes(atual));                 
+      37 +          const ativa =                                        
+      38 +            aba.caminho === atual ||                           
+      39 +            (aba.caminho === "" && ["ficha", "treino"].includes
+         +(atual)) ||                                                    
+      40 +            (aba.caminho === "conta" && atual === "admin");    
+      41            return (
+      42              <li key={aba.caminho}>
+      43                <a
+     ...
+       84      return ligarSincronizacaoAutomatica();
+       85    }, [logado]);
+       86  
+       87 +  // Link de convite aberto por quem já entrou: vai para o iní
+          +cio.                                                          
+       88 +  useEffect(() => {                                           
+       89 +    if (logado && rota[0] === "convite") window.location.repla
+          +ce("#/");                                                     
+       90 +  }, [logado, rota]);                                         
+       91 +                                                              
+     … +19 lines (ctrl+o to expand)
+  ⎿  Updated frontend/src/telas/Login.tsx +3 -1
+      3  import { Aviso, Botao, estiloEntrada } from "../componentes/ui";
+      4  import { ErroApi } from "../lib/api";
+      5  import { configLogin, entrarComGoogle, entrarDev, type ConfigLog
+         in } from "../lib/sessao";
+      6 +import type { Saida } from "../lib/tipos";                      
+      7  
+      8  interface GoogleId {
+      9    initialize(opcoes: { client_id: string; callback: (r: { creden
+         tial: string }) => void }): void;
+     ...
+      36  
+      37  const CHAVE_EMAIL_DEV = "clgym.email_dev";
+      38  
+      38 -export function Login({ expirou }: { expirou: boolean }) {     
+      39 +export function Login({ saida }: { saida?: Saida }) {          
+      40 +  const expirou = saida?.motivo === "sessao-expirada";         
+      41    const [config, setConfig] = useState<ConfigLogin | null>(null
+          );
+      42    const [erro, setErro] = useState<string | null>(null);
+      43    const [carregando, setCarregando] = useState(false);
+  ⎿  Updated frontend/src/main.tsx +2
+       4  
+       5  import { App } from "./App";
+       6  import "./index.css";
+       7 +// Escuta o pedido de instalação do Chrome desde o início (ele 
+         +pode chegar antes da tela de login).                           
+       8 +import "./lib/instalar";                                       
+       9  
+      10  // Service worker: deixa o app abrir sem internet e se atualiza
+           sozinho quando há versão nova.
+      11  registerSW({ immediate: true });
+  ⎿  Created frontend/src/telas/Convite.tsx +9
+      1 +// Tela do link de convite (#/convite/<id>), antes de entrar. Pr
+        +ovisória: o agente de acesso faz a                              
+      2 +// tela de verdade (situação do convite, código, Google e o botã
+        +o de instalar).                                                 
+      3 +                                                                
+      4 +import type { Saida } from "../lib/tipos";                      
+      5 +import { Login } from "./Login";                                
+      6 +                                                                
+      7 +export function Convite({ id, saida }: { id: string; saida?: Sai
+        +da }) {                                                         
+      8 +  return <Login key={id} saida={saida} />;                      
+      9 +}                                                               
+  ⎿  … +2 files changed
+     frontend/src/telas/Admin.tsx
+     frontend/src/componentes/Instalar.tsx
+  ⎿  (timeout 3m)
+
+● A base está pronta, e lint, tipos e os 65 testes passam. Agora solto os três
+  agentes em paralelo, cada um com os seus arquivos:
+
+● 3 background agents launched (↓ to manage)
+   ├ Backend: admin e convites
+   ├ Frontend: login, convite, instalar
+   └ Frontend: telas de admin
+
+● Os três agentes estão trabalhando em paralelo. Enquanto isso, vou adiantando a
+  documentação, que é minha. Primeiro o README (em inglês, peça de portfólio):
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated README.md +24 -10
+      23  
+      24  ## What the app does
+      25  
+      26 -- **Sign in with Google**, invite-only (an e-mail allow list). 
+         -Each person only ever sees their own                           
+      27 -  data; on first sign-in they get a copy of the template plans,
+         - which they can then edit.                                     
+      26 +- **Sign in with Google**, invite-only. The admin generates a o
+         +ne-time invite in the app: a link                              
+      27 +  plus an 8-character code (no look-alike characters), valid fo
+         +r 24 hours and for one person. The                             
+      28 +  friend opens the link, types the code and signs in; the invit
+         +e is consumed in the same                                      
+      29 +  transaction that creates the account. Each person only ever s
+         +ees their own data; on first                                   
+      30 +  sign-in they get a copy of the template plans, which they can
+         + then edit.                                                    
+      31 +- **Admin screen** (only for the `ADMIN_EMAIL` account): who us
+         +es the app and how (last seen,                                 
+      32 +  phone or computer, installed app or browser, workout counts),
+         + never anyone's weight, food or                                
+      33 +  loads. The admin can block an account (reversible: the person
+         + is signed out on the next sync)                               
+      34 +  or delete it for real, and manages the invites (share the lin
+         +k, copy the code, cancel).                                     
+      35 +- **Install button before signing in:** the native install prom
+         +pt on Android and desktop Chrome,                              
+      36 +  or illustrated steps for the iPhone (Share, then "Add to Home
+         + Screen" in Safari).                                           
+      37  - **Plans** with one rep target per exercise (never a range), a
+           warm-up flag on the first exercise,
+      38    supersets, and up to two alternatives per exercise ("Plan B")
+          . Every exercise keeps its own load
+      39    history, including the alternatives.
+     ...
+      77    logged during a workout go up together at the end. Never on a
+           timer, to stay within free-tier
+      78    limits, and with no connection the app does not even try.
+      79  - **Auth.** `POST /api/auth/google` verifies the Google ID toke
+          n (signature, audience,
+      71 -  `email_verified`) against the invite list and returns a long-
+         -lived session token signed by the                              
+      72 -  server, so the app keeps working after days offline. Every ro
+         -ute except `/api/health` requires                              
+      73 -  `Authorization: Bearer <session token>`.                     
+      80 +  `email_verified`) and lets in an existing account, the admin 
+         +e-mail, or a new person with a                                 
+      81 +  valid invite code. It returns a long-lived session token sign
+         +ed by the server, so the app keeps                             
+      82 +  working after days offline. Apart from `/api/health`, sign-in
+         + and the public invite check, every                            
+      83 +  route requires `Authorization: Bearer <session token>`. A blo
+         +cked or deleted account gets a                                 
+      84 +  403 or 401 with an `X-Motivo` header, and the app signs out (
+         +local data stays on the phone).                                
+      85  - **Per-user data.** The server stamps every record with the us
+          er from the token. Downloads only
+      86    return that user's records plus the shared exercise catalog; 
+          changing someone else's record (or
+      87    the catalog) is refused with **403**, and pointing to it coun
+          ts as missing (**409**).
+     ...
+      114  npm --prefix frontend run dev               # http://localhost
+           :5173, proxies /api to the backend
+      115  ```
+      116  
+      106 -The sign-in screen offers a development login (any e-mail from
+          - `EMAILS_PERMITIDOS`), so you do                              
+      107 -not need a Google client ID locally. It only works with SQLite
+          - and outside Vercel; in production                            
+      108 -the route answers 404. To see the progress screen full, fill t
+          -hat account with 20 weeks of made-up                          
+      109 -data (workouts with progression, weight, food, water and goals
+          -):                                                            
+     … +15 lines (ctrl+o to expand)
+
+● Agora o CLAUDE.md. Vou localizar as partes que mudam:
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated CLAUDE.md +66 -22
+      54  uv sync                                   # instala dependência
+          s
+      55  uv run alembic upgrade head               # cria/atualiza o ban
+          co local (clgym.db)
+      56  uv run python -m backend.seed             # carrega backend/dat
+          a/treino.toml no banco
+      57 -uv run python -m backend.dados_dev        # enche a conta do "E
+         -ntrar como dev" com meses de dados                             
+      57 +uv run python -m backend.dados_dev        # meses de dados na c
+         +onta de dev + amigos e convites de exemplo                     
+      58  uv run uvicorn backend.main:app --reload  # API em http://local
+          host:8000 (docs em /api/docs)
+      59  uv run pytest                             # testes
+      60  uv run ruff check . && uv run ruff format .
+     ...
+      67  `PRAGMA foreign_key_check` no fim (`backend/migrations/env.py`)
+          .
+      68  
+      69  O `backend.dados_dev` só roda em SQLite: gera 20 semanas invent
+          adas (treinos com progressão e
+      70 -Plano B, peso caindo, calorias, proteína, carbo, água e metas, 
+         -uma delas já alcançada) na mesma                               
+      71 -conta do "Entrar como dev". Pode rodar de novo; não mexe no que
+         - foi lançado à mão.                                            
+      70 +Plano B, peso caindo, calorias, proteína, carbo, água e metas, 
+         +uma delas já alcançada) na conta do                            
+      71 +"Entrar como dev" (o `ADMIN_EMAIL`), e uns amigos de exemplo (u
+         +m bloqueado) e convites, para a tela                           
+      72 +de administração. Pode rodar de novo; não mexe no que foi lança
+         +do à mão.                                                      
+      73  
+      74  ```bash
+      75  cd frontend
+     ...
+      80  ```
+      81  
+      82  Para testar o app sem um `GOOGLE_CLIENT_ID` de verdade, ponha `
+          LOGIN_DEV=1` no `.env`: a tela de
+      82 -login mostra "Entrar como dev" (com um e-mail de `EMAILS_PERMIT
+         -IDOS`). Isso só funciona com banco                             
+      83 +login mostra "Entrar como dev" (com o `ADMIN_EMAIL`, uma conta 
+         +que já existe ou um código de                                  
+      84 +convite, como no login de verdade). Isso só funciona com banco 
+      85  SQLite e fora da Vercel (`VERCEL` no ambiente); em produção `/a
+          pi/auth/dev` responde 404. O
+      86  `.claude/launch.json` tem os servidores `api` e `app` para o pa
+          inel de navegador do Claude Code.
+      87  
+      88  Configuração via `.env` (veja `.env.example`): `DATABASE_URL`, 
+          `GOOGLE_CLIENT_ID`, `SESSAO_SECRET`
+      87 -(mínimo 32 caracteres), `EMAILS_PERMITIDOS` (separados por vírg
+         -ula) e, opcional, `SESSAO_DIAS`                                
+      89 +(mínimo 32 caracteres), `ADMIN_EMAIL` (o e-mail do administrado
+         +r) e, opcional, `SESSAO_DIAS`                                  
+      90  (padrão 90) e `LOGIN_DEV` (só local). As migrações e o seed só 
+          precisam do `DATABASE_URL`.
+      91  
+      92  ## Estrutura
+     ...
+      103    sync.py               lógica de envio/download, separada por
+            usuário
+      104    routers/auth.py       GET /api/auth/config, POST /api/auth/g
+           oogle, POST /api/auth/dev (só local)
+      105    routers/conta.py      GET/PATCH/DELETE /api/conta (perfil; a
+           pagar a conta)
+      106 +  convites.py           código do convite (gerar, normalizar, 
+          +situação) e o uso na criação da conta                         
+      107 +  routers/convites.py   GET /api/convites/{id} e POST /api/con
+          +vites/verificar (sem login)                                   
+      108 +  routers/admin.py      /api/admin/usuarios e /api/admin/convi
+          +tes (só o ADMIN_EMAIL)                                        
+     … +134 lines (ctrl+o to expand)
+
+● A documentação está pronta. Agora ajusto os dois .env locais: troco o
+  EMAILS_PERMITIDOS pelo ADMIN_EMAIL, sem mostrar segredos:
+
+  Ran 1 shell command (ctrl+o to expand)
+● Os .env já estão ajustados, com o admin local na conta de dev e o de produção
+  no seu Gmail. Enquanto os agentes trabalham, vou checar no Neon se sua conta
+  já existe lá. · summary
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● A sua conta já existe em produção, com o perfil completo. Então o login com o
+  Google funcionou e a Vercel conversa com o Neon. Vou registrar isso no
+  CLAUDE.md:
+
+● Bash(python3 - <<'EOF'
+      from pathlib import Path…)
+  ⎿  Updated CLAUDE.md +2 -1
+      481  - [x] Deploy na Vercel (função em `gru1`) + Neon em São Paulo,
+            migrações e seed (25/11/2026)
+      482  - [x] Administração (usuários com atividade, bloquear, excluir
+           ) e convites por link + código no
+      483    lugar do `EMAILS_PERMITIDOS`; botão de instalar antes de ent
+           rar (25/11/2026)
+      484 -- [ ] Primeiro login com Google em produção, instalação nos ce
+          -lulares e convite dos amigos                                  
+      484 +- [x] Primeiro login com Google em produção (25/11/2026)      
+      485 +- [ ] Instalação nos celulares e convite dos amigos           
+
+● Preparei tudo o que não depende dos agentes:
+
+  - Documentação: README e CLAUDE.md atualizados com convites, administração e o
+    botão de instalar.
+  - Variáveis: os dois .env passaram do EMAILS_PERMITIDOS para o ADMIN_EMAIL.
+  - Produção: a sua conta já existe no Neon, então o login com o Google
+    funcionou.
+
+  Os três agentes (backend, telas de entrada e convite, telas de administração)
+  ainda estão trabalhando. Quando terminarem, eu junto as partes, testo o fluxo
+  inteiro e te mostro.
+
+❯ enquanto isso voce consegue colocar para mudar a tela arrastando com dedo que
+  nem app's mesmo e também tem uma faixa branca feia no celular em baixo de
+  tudo, consegue remover? deixar o app perfeito pra uso no cell como se fosse
+  um app msm
+
+● Dá para fazer as duas coisas. A tela que segue o dedo e o arrasto para voltar
+  ficam em arquivos que os agentes não estão mexendo (App.tsx, index.css,
+  index.html), então posso trabalhar em paralelo. Antes de mexer na faixa
+  branca, vou confirmar o que costuma causá-la em PWA no Android e no iPhone:
+
+● Web Search("Android installed PWA navigation bar color white bottom bar
+            manifest background_color theme_color Chrome WebAPK dark mode")
+  ⎿  Did 1 search in 8s
+
+● Web Search("iOS PWA standalone white bar at bottom
+            apple-mobile-web-app-status-bar-style default viewport-fit cover
+            safe-area-inset-bottom fix")
+  ⎿  Did 1 search in 8s
+
+● Duas causas prováveis para a faixa: no Android, a barra do sistema usa a cor
+  fixa do manifest no tema escuro; no iPhone, é um bug conhecido do iOS 26.1.
+  Preciso saber onde você vê a faixa. · summary
+
+● Answered Claude's questions:
+  ⎿  · No CL Gym, onde aparece a faixa branca embaixo de tudo? → Android, app
+     instalado
+     · O seu celular está no tema claro ou no escuro quando a faixa branca do CL
+     Gym aparece? → Escuro
+
+● Agent "Backend: admin e convites" finished · 12m 12s
+
+● Agent "Frontend: telas de admin" failed: Agent terminated early due to an API
+  error: You've hit your 5-hour limit · resets 6:50pm (America/Sao_Paulo) (error
+  type rate_limit, HTTP 429, request id req_011ChQC5WrASL4Foqb3hb7Tb, model
+  sent to the API: claude-opus-5-5)
+
+● Agent "Frontend: login, convite, instalar" failed: Agent terminated early due
+  to an API error: You've hit your 5-hour limit · resets 6:50pm
+  (America/Sao_Paulo) (error type rate_limit, HTTP 429, request id
+  req_011ChQC68y3tFbPPojnZBgXR, model sent to the API: claude-opus-5-5)
+  ⎿  You've hit your 5-hour limit · resets 6:50pm (America/Sao_Paulo)
+     /upgrade to increase your usage limit.

@@ -8,17 +8,19 @@ import { db } from "./lib/db";
 import { perfilIncompleto } from "./lib/perfil";
 import { useRota } from "./lib/rota";
 import { ligarSincronizacaoAutomatica, sincronizar, type EstadoSync } from "./lib/sync";
-import type { Usuario } from "./lib/tipos";
+import type { Saida, Usuario } from "./lib/tipos";
 import { BoasVindas } from "./telas/BoasVindas";
 import { Conta } from "./telas/Conta";
+import { Convite } from "./telas/Convite";
 import { Dia } from "./telas/Dia";
 import { FichaTela } from "./telas/FichaTela";
 import { Inicio } from "./telas/Inicio";
 import { Login } from "./telas/Login";
 import { Treino } from "./telas/Treino";
 
-// Os gráficos (Recharts) só são baixados quando a tela abre.
+// Os gráficos (Recharts) só são baixados quando a tela abre; a administração, só para o admin.
 const Graficos = lazy(() => import("./telas/Graficos").then((m) => ({ default: m.Graficos })));
+const Admin = lazy(() => import("./telas/Admin").then((m) => ({ default: m.Admin })));
 
 const ABAS: { caminho: string; rotulo: string; icone: NomeIcone }[] = [
   { caminho: "", rotulo: "Treinos", icone: "halter" },
@@ -32,7 +34,10 @@ function Navegacao({ atual }: { atual: string }) {
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {ABAS.map((aba) => {
-          const ativa = aba.caminho === atual || (aba.caminho === "" && ["ficha", "treino"].includes(atual));
+          const ativa =
+            aba.caminho === atual ||
+            (aba.caminho === "" && ["ficha", "treino"].includes(atual)) ||
+            (aba.caminho === "conta" && atual === "admin");
           return (
             <li key={aba.caminho}>
               <a
@@ -79,10 +84,19 @@ export function App() {
     return ligarSincronizacaoAutomatica();
   }, [logado]);
 
+  // Link de convite aberto por quem já entrou: vai para o início.
+  useEffect(() => {
+    if (logado && rota[0] === "convite") window.location.replace("#/");
+  }, [logado, rota]);
+
   if (!meta) return null;
   const [tela, parametro] = rota;
+  const saida = meta.get("saida") as Saida | undefined;
 
-  if (!logado || !usuario) return <Login expirou={meta.get("sessao_expirada") === true} />;
+  if (!logado || !usuario) {
+    if (tela === "convite") return <Convite id={parametro ?? ""} saida={saida} />;
+    return <Login saida={saida} />;
+  }
   if (perfilIncompleto(usuario) && perfilDepois !== usuario.id) {
     return <BoasVindas usuario={usuario} depois={() => setPerfilDepois(usuario.id)} />;
   }
@@ -93,6 +107,7 @@ export function App() {
   else if (tela === "dia") conteudo = <Dia usuario={usuario} />;
   else if (tela === "graficos") conteudo = <Graficos usuario={usuario} aba={parametro} />;
   else if (tela === "conta") conteudo = <Conta usuario={usuario} />;
+  else if (tela === "admin") conteudo = <Admin usuario={usuario} aba={parametro} />;
   else conteudo = <Inicio />;
 
   return (

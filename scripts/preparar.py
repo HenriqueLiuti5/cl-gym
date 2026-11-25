@@ -39,8 +39,8 @@ def gerar_env(exemplo: str) -> str:
 
 
 def email_dev(env: str) -> str | None:
-    """O primeiro e-mail convidado, que serve para o "Entrar como dev"."""
-    achado = re.search(r"(?m)^EMAILS_PERMITIDOS=([^,\s]+)", env)
+    """O e-mail do admin, que serve para o "Entrar como dev" (cria a conta sem convite)."""
+    achado = re.search(r"(?m)^ADMIN_EMAIL=(\S+)", env)
     return achado.group(1) if achado else None
 
 

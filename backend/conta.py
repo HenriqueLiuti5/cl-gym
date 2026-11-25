@@ -1,13 +1,18 @@
-"""Conta do usuário: primeiro login (com a cópia das fichas modelo) e apagar a conta."""
+"""Conta do usuário: quem pode entrar (convite, admin, bloqueio), primeiro login (com a cópia
+das fichas modelo) e apagar a conta."""
 
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlmodel import Session, col, select
 
-from backend.auth import IdentidadeGoogle
+from backend.auth import MENSAGEM_BLOQUEADO, IdentidadeGoogle, esta_bloqueado
+from backend.config import Settings
+from backend.convites import ConviteInvalido, usar_convite
 from backend.models import (
+    Convite,
     Exercicio,
     Ficha,
     FichaExercicio,
@@ -16,8 +21,20 @@ from backend.models import (
     Serie,
     Sessao,
     Usuario,
+    UsuarioOut,
 )
 from backend.sync import proxima_versao
+
+SEM_CONVITE = "Para criar sua conta, você precisa de um convite."
+
+
+class AcessoNegado(Exception):
+    """Login recusado. O `motivo` vai no cabeçalho X-Motivo; a mensagem é para a pessoa."""
+
+    def __init__(self, motivo: str, mensagem: str) -> None:
+        self.motivo = motivo
+        super().__init__(mensagem)
+
 
 # Namespace das cópias: a mesma ficha modelo gera sempre o mesmo id para o mesmo usuário.
 NAMESPACE_COPIAS = uuid.UUID("0f6b1e1c-8f0a-4c43-9d2e-6a7b3c1d5e90")
@@ -82,8 +99,15 @@ def copiar_fichas_modelo(session: Session, usuario_id: uuid.UUID) -> int:
     return copiadas
 
 
-def entrar(session: Session, identidade: IdentidadeGoogle) -> tuple[Usuario, bool]:
-    """Acha o usuário pelo `sub` do Google ou cria um novo. Devolve (usuário, se é novo)."""
+def entrar(
+    session: Session,
+    identidade: IdentidadeGoogle,
+    antes_de_criar: Callable[[Usuario], None] | None = None,
+) -> tuple[Usuario, bool]:
+    """Acha o usuário pelo `sub` do Google ou cria um novo. Devolve (usuário, se é novo).
+
+    `antes_de_criar` roda na mesma transação da conta nova (ex.: usar o convite); se ela falhar,
+    quem chamou desfaz tudo e nada é gravado."""
     usuario = session.exec(select(Usuario).where(Usuario.google_sub == identidade.sub)).first()
     novo = usuario is None
     if usuario is None:
@@ -95,6 +119,8 @@ def entrar(session: Session, identidade: IdentidadeGoogle) -> tuple[Usuario, boo
         )
         session.add(usuario)
         session.flush()
+        if antes_de_criar is not None:
+            antes_de_criar(usuario)
         copiar_fichas_modelo(session, usuario.id)
     else:
         # O e-mail pode mudar na conta Google. O nome do Google só entra se a pessoa não tiver
@@ -107,10 +133,42 @@ def entrar(session: Session, identidade: IdentidadeGoogle) -> tuple[Usuario, boo
     return usuario, novo
 
 
+def entrar_com_regras(
+    session: Session, settings: Settings, identidade: IdentidadeGoogle, convite: str | None
+) -> tuple[Usuario, bool]:
+    """Quem pode entrar: quem já tem conta (se não estiver bloqueado), o admin (cria a conta sem
+    convite) e quem traz um convite válido (que é gasto junto com a criação da conta)."""
+    existente = session.exec(select(Usuario).where(Usuario.google_sub == identidade.sub)).first()
+    if existente is not None:
+        if esta_bloqueado(existente, settings):
+            raise AcessoNegado("bloqueado", MENSAGEM_BLOQUEADO)
+        # Já tem conta: um convite que tenha vindo junto fica para outra pessoa.
+        return entrar(session, identidade)
+    if settings.e_admin(identidade.email):
+        return entrar(session, identidade)
+    if not convite or not convite.strip():
+        raise AcessoNegado("sem-convite", SEM_CONVITE)
+    try:
+        return entrar(
+            session, identidade, antes_de_criar=lambda u: usar_convite(session, convite, u.id)
+        )
+    except ConviteInvalido as erro:
+        session.rollback()
+        raise AcessoNegado("convite-invalido", str(erro)) from erro
+
+
+def usuario_out(usuario: Usuario, settings: Settings) -> UsuarioOut:
+    saida = UsuarioOut.model_validate(usuario, from_attributes=True)
+    saida.admin = settings.e_admin(usuario.email)
+    return saida
+
+
 def apagar_conta(session: Session, usuario_id: uuid.UUID) -> None:
     """Apaga de verdade tudo do usuário (única exceção à exclusão lógica)."""
     # Filhos antes dos pais, por causa das chaves estrangeiras.
     for modelo in (Serie, Sessao, RegistroDiario, Meta, FichaExercicio, Ficha, Exercicio):
         session.exec(delete(modelo).where(col(modelo.usuario_id) == usuario_id))
+    # O convite usado fica no histórico do admin, sem apontar para a conta que não existe mais.
+    session.exec(update(Convite).where(col(Convite.usado_por) == usuario_id).values(usado_por=None))
     session.exec(delete(Usuario).where(col(Usuario.id) == usuario_id))
     session.commit()

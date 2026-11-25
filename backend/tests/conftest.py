@@ -2,6 +2,9 @@
 
 O login com Google é testado de verdade, só que sem rede: os ID tokens são assinados com uma
 chave RSA gerada aqui, e o verificador recebe a chave pública dela no lugar das do Google.
+
+A Ana (EMAIL_A) é a administradora (ADMIN_EMAIL) e cria a conta sem convite; o Bruno (EMAIL_B) e
+os outros criam a conta com um convite gerado aqui, como se o admin tivesse mandado.
 """
 
 import time
@@ -13,12 +16,14 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import Engine
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session, SQLModel, select
 
 from backend.auth import VerificadorGoogle, get_verificador_google
 from backend.config import Settings, get_settings
+from backend.convites import criar_convite
 from backend.db import criar_engine, get_session
 from backend.main import app
+from backend.models import Usuario
 
 CLIENT_ID = "cliente-de-teste.apps.googleusercontent.com"
 SEGREDO = "segredo-de-teste-com-pelo-menos-32-caracteres"
@@ -27,6 +32,8 @@ EMAIL_B = "bruno@exemplo.com"
 
 GerarIdToken = Callable[..., str]
 Entrar = Callable[..., str]
+NovoConvite = Callable[..., str]
+Configurar = Callable[..., None]
 
 
 @pytest.fixture(scope="session")
@@ -71,29 +78,51 @@ def session(engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def configuracao(emails: str = f"{EMAIL_A},{EMAIL_B}") -> Settings:
+def configuracao(admin: str = EMAIL_A) -> Settings:
     return Settings(
         _env_file=None,  # type: ignore[call-arg]
         database_url="sqlite://",
         google_client_id=CLIENT_ID,
         sessao_secret=SEGREDO,
-        emails_permitidos=emails,
+        admin_email=admin,
     )
 
 
 @pytest.fixture
-def convidar() -> Callable[[str], None]:
-    """Troca a lista de convites (como mudar EMAILS_PERMITIDOS na Vercel)."""
+def configurar() -> Configurar:
+    """Troca a configuração do servidor (como mudar as variáveis na Vercel)."""
 
-    def trocar(emails: str) -> None:
-        app.dependency_overrides[get_settings] = lambda: configuracao(emails)
+    def trocar(**campos: Any) -> None:
+        config = configuracao().model_copy(update=campos)
+        app.dependency_overrides[get_settings] = lambda: config
 
     return trocar
 
 
 @pytest.fixture
+def novo_convite(engine: Engine) -> NovoConvite:
+    """Cria um convite direto no banco (como o admin pela tela) e devolve o código. Passe campos
+    para mudar (ex.: `expira_em` no passado)."""
+
+    def criar(**mudancas: Any) -> str:
+        with Session(engine) as session:
+            convite = criar_convite(session)
+            for campo, valor in mudancas.items():
+                setattr(convite, campo, valor)
+            session.commit()
+            return convite.codigo
+
+    return criar
+
+
+def tem_conta(engine: Engine, sub: str) -> bool:
+    with Session(engine) as session:
+        return session.exec(select(Usuario).where(Usuario.google_sub == sub)).first() is not None
+
+
+@pytest.fixture
 def anonimo(
-    engine: Engine, chave_google: rsa.RSAPrivateKey, convidar: Callable[[str], None]
+    engine: Engine, chave_google: rsa.RSAPrivateKey, configurar: Configurar
 ) -> Iterator[TestClient]:
     """Cliente sem login."""
 
@@ -106,20 +135,25 @@ def anonimo(
     app.dependency_overrides[get_verificador_google] = lambda: VerificadorGoogle(
         CLIENT_ID, obter_chave=lambda _token: publica
     )
-    convidar(f"{EMAIL_A},{EMAIL_B}")
+    configurar()
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def entrar(anonimo: TestClient, id_token_google: GerarIdToken) -> Entrar:
-    """Faz o login com Google e devolve o token de sessão."""
+def entrar(
+    anonimo: TestClient, id_token_google: GerarIdToken, engine: Engine, novo_convite: NovoConvite
+) -> Entrar:
+    """Faz o login com Google e devolve o token de sessão. Quem não é o admin e ainda não tem
+    conta entra com um convite novo."""
 
     def login(email: str = EMAIL_A, sub: str = "sub-ana", **campos: Any) -> str:
-        resposta = anonimo.post(
-            "/api/auth/google", json={"id_token": id_token_google(email=email, sub=sub, **campos)}
-        )
+        corpo = {"id_token": id_token_google(email=email, sub=sub, **campos)}
+        config: Settings = app.dependency_overrides[get_settings]()
+        if not config.e_admin(email) and not tem_conta(engine, sub):
+            corpo["convite"] = novo_convite()
+        resposta = anonimo.post("/api/auth/google", json=corpo)
         assert resposta.status_code == 200, resposta.text
         return resposta.json()["token"]
 
