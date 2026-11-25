@@ -32,12 +32,24 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
   the app says "go up in weight" when the first set beat the target by 2 reps, or "too heavy" when a
   set fell 2 reps short.
 - **Suggestion of the day:** the plan done longest ago, since workouts do not follow weekdays.
-- **Daily log:** fasting weight, calories, protein and a note. Charts show load progression per
-  exercise, a 7-day weight average and weekly calories and protein against personal goals.
+- **Daily log:** fasting weight, calories, protein, carbs, water (with one-tap +250 ml buttons) and
+  a note.
+- **Progress screen** in four tabs (training, body, nutrition, fun facts): load per exercise with
+  personal records and an estimated one-rep max, workouts per week, a consistency calendar, muscle
+  groups, the 7-day weight average with a forecast, week-to-week change, daily or weekly nutrition
+  and where the calories come from. Every chart says what it shows in one sentence and has a
+  table view. The fun facts compare totals with everyday things (tonnes lifted in elephants, reps
+  as stairs up Sugarloaf Mountain, protein in eggs, water in bathtubs).
+- **Goals on the chart:** each chart that makes sense has a target marker at the end of the axis,
+  which turns green with a check mark once reached. Weight and per-exercise load goals show the
+  progress so far, and reaching one triggers a congratulations screen that suggests the next goal.
+  Goals sync like everything else, so they can be changed offline at the gym.
 - **Profile and account:** the first sign-in asks for name, current weight, height and age (the
-  weight goes into the daily log, so the weight chart starts right away). All of it, plus the
-  goals, can be changed later, and deleting the account erases everything for real behind a
-  typed confirmation.
+  weight goes into the daily log, so the weight chart starts right away). All of it can be changed
+  later, and deleting the account erases everything for real behind a typed confirmation.
+- **Design:** plain and phone-native, with the system font, grouped lists like a settings screen,
+  hand-drawn SVG icons and no emojis. Light and dark themes follow the phone, every text color
+  passes 4.5:1 contrast in both, and the chart colors were checked for color blindness.
 
 ## Sync protocol
 
@@ -93,7 +105,12 @@ npm --prefix frontend run dev               # http://localhost:5173, proxies /ap
 
 The sign-in screen offers a development login (any e-mail from `EMAILS_PERMITIDOS`), so you do
 not need a Google client ID locally. It only works with SQLite and outside Vercel; in production
-the route answers 404.
+the route answers 404. To see the progress screen full, fill that account with 20 weeks of made-up
+data (workouts with progression, weight, food, water and goals):
+
+```bash
+uv run python -m backend.dados_dev
+```
 
 Checks (the same ones CI runs):
 
@@ -110,4 +127,6 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 - [x] Template plans and exercise images (public-domain
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db))
 - [x] Offline-first PWA
+- [x] Progress screen with goals, fun facts, carbs and water
+- [x] Redesign: plain phone-native look, light and dark themes, no emojis
 - [ ] Deploy (Vercel + Neon) and invites

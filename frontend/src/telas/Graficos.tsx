@@ -1,128 +1,102 @@
-import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+// Evolução: treino, corpo, alimentação e curiosidades, com as metas de cada gráfico.
 
-import { Campo, Cartao, estiloEntrada, Titulo } from "../componentes/ui";
-import { formatarData } from "../lib/formato";
+import { useLiveQuery } from "dexie-react-hooks";
+import { useMemo, useState } from "react";
+
+import { AbaCorpo } from "../componentes/evolucao/AbaCorpo";
+import { AbaCuriosidades } from "../componentes/evolucao/AbaCuriosidades";
+import { AbaNutricao } from "../componentes/evolucao/AbaNutricao";
+import { AbaTreino } from "../componentes/evolucao/AbaTreino";
+import type { DadosEvolucao } from "../componentes/evolucao/dados";
+import { EditorMeta, Parabens, type PedidoDeMeta } from "../componentes/evolucao/Metas";
+import { Segmentos, Titulo } from "../componentes/ui";
 import { db } from "../lib/db";
-import { evolucao, mediasSemanais, pesoComMedia7 } from "../lib/regras";
+import { exerciciosFeitos, montarTreinos, pontosDePeso } from "../lib/estatisticas";
+import { acharMeta, chaveComemoracao, lerComemoradas, situacaoDestino, type SituacaoMeta } from "../lib/metas";
+import { dataLocal } from "../lib/regras";
 import type { Usuario } from "../lib/tipos";
 
-const eixo = { stroke: "#64748b", fontSize: 12 };
-const dica = { contentStyle: { background: "#0f172a", border: "1px solid #334155", borderRadius: 12 } };
+const ABAS = [
+  { id: "treino", rotulo: "Treino" },
+  { id: "corpo", rotulo: "Corpo" },
+  { id: "nutricao", rotulo: "Nutrição" },
+  { id: "curiosidades", rotulo: "Curiosidades" },
+];
 
-function Vazio({ children }: { children: string }) {
-  return <p className="py-6 text-center text-sm text-slate-500">{children}</p>;
+/** Metas de destino alcançadas e ainda não comemoradas neste aparelho (a primeira aparece). */
+function comemoracoesPendentes(d: DadosEvolucao, comemoradas: string[]): { situacao: SituacaoMeta; onde: string }[] {
+  const pendentes: { situacao: SituacaoMeta; onde: string }[] = [];
+  const peso = acharMeta(d.metas, "peso");
+  if (peso && d.pesos.length) {
+    const situacao = situacaoDestino(peso, d.pesos.map((p) => ({ t: p.t, valor: p.media7 })), d.pesos[d.pesos.length - 1]!.media7);
+    if (situacao.alcancadaEm !== null) pendentes.push({ situacao, onde: "de peso (pela média de 7 dias)" });
+  }
+  for (const r of d.resumos) {
+    const meta = acharMeta(d.metas, "carga", r.exercicio.id);
+    if (!meta) continue;
+    const situacao = situacaoDestino(meta, r.pontos, r.recorde.valor);
+    if (situacao.alcancadaEm !== null) pendentes.push({ situacao, onde: `no exercício ${r.exercicio.nome}` });
+  }
+  return pendentes.filter((p) => !comemoradas.includes(chaveComemoracao(p.situacao.meta)));
 }
 
-export function Graficos({ usuario }: { usuario: Usuario }) {
+export function Graficos({ usuario, aba }: { usuario: Usuario; aba?: string }) {
   const exercicios = useLiveQuery(() => db.exercicios.toArray(), []);
-  const series = useLiveQuery(() => db.series.toArray(), []);
+  const fichas = useLiveQuery(() => db.fichas.toArray(), []);
+  const itens = useLiveQuery(() => db.ficha_exercicios.toArray(), []);
   const sessoes = useLiveQuery(() => db.sessoes.toArray(), []);
+  const series = useLiveQuery(() => db.series.toArray(), []);
   const registros = useLiveQuery(() => db.registros_diarios.toArray(), []);
-  const [escolhido, setEscolhido] = useState<string>("");
-  if (!exercicios || !series || !sessoes || !registros) return null;
+  const metas = useLiveQuery(() => db.metas.toArray(), []);
+  const comemoradas = useLiveQuery(lerComemoradas, []);
+  const [pedido, setPedido] = useState<PedidoDeMeta | null>(null);
+  // Fechadas nesta visita (evita reabrir enquanto a marca de "comemorada" é gravada).
+  const [vistas, setVistas] = useState<string[]>([]);
 
-  const feitos = new Set(series.filter((s) => !s.excluido).map((s) => s.exercicio_id));
-  const opcoes = exercicios.filter((e) => feitos.has(e.id)).sort((a, b) => a.nome.localeCompare(b.nome));
-  const exercicioId = escolhido || opcoes[0]?.id || "";
-  const pontosCarga = evolucao(exercicioId, series, sessoes).map((p) => ({ ...p, rotulo: formatarData(p.data) }));
-  const pontosPeso = pesoComMedia7(registros).map((p) => ({ ...p, rotulo: formatarData(p.data) }));
-  const semanas = mediasSemanais(registros).map((s) => ({ ...s, rotulo: formatarData(s.semana) }));
+  const treinos = useMemo(() => (sessoes && series ? montarTreinos(sessoes, series) : []), [sessoes, series]);
+  const resumos = useMemo(() => (exercicios ? exerciciosFeitos(treinos, exercicios) : []), [treinos, exercicios]);
+  const pesos = useMemo(() => (registros ? pontosDePeso(registros) : []), [registros]);
+
+  if (!exercicios || !fichas || !itens || !sessoes || !series || !registros || !metas || !comemoradas) return null;
+
+  const d: DadosEvolucao = {
+    usuario,
+    hoje: dataLocal(),
+    exercicios,
+    fichas,
+    itens,
+    registros,
+    metas,
+    treinos,
+    resumos,
+    pesos,
+    editarMeta: setPedido,
+  };
+  const atual = ABAS.find((a) => a.id === aba)?.id ?? "treino";
+  const parabens = comemoracoesPendentes(d, [...comemoradas, ...vistas])[0];
 
   return (
-    <div className="space-y-4">
+    <div>
       <Titulo>Evolução</Titulo>
+      <nav className="sticky top-0 z-20 -mx-4 -mt-1 bg-fundo px-4 pt-1 pb-3" aria-label="Partes da evolução">
+        <Segmentos opcoes={ABAS} escolhido={atual} link={(id) => `#/graficos/${id}`} rotulo="Partes da evolução" />
+      </nav>
 
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Carga por exercício</h2>
-        {opcoes.length === 0 ? (
-          <Vazio>Registre um treino para ver a evolução.</Vazio>
-        ) : (
-          <>
-            <Campo rotulo="Exercício">
-              <select className={estiloEntrada} value={exercicioId} onChange={(e) => setEscolhido(e.target.value)}>
-                {opcoes.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nome}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            <div className="h-56">
-              <ResponsiveContainer>
-                <LineChart data={pontosCarga} margin={{ left: -20, right: 8, top: 8 }}>
-                  <CartesianGrid stroke="#1e293b" />
-                  <XAxis dataKey="rotulo" {...eixo} />
-                  <YAxis {...eixo} domain={["auto", "auto"]} unit=" kg" width={64} />
-                  <Tooltip {...dica} formatter={(v) => [`${v} kg`, "Maior carga"]} />
-                  <Line type="monotone" dataKey="valor" stroke="#34d399" strokeWidth={3} dot />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-slate-500">A maior carga de cada treino.</p>
-          </>
-        )}
-      </Cartao>
+      {atual === "treino" && <AbaTreino d={d} />}
+      {atual === "corpo" && <AbaCorpo d={d} />}
+      {atual === "nutricao" && <AbaNutricao d={d} />}
+      {atual === "curiosidades" && <AbaCuriosidades d={d} />}
 
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Peso (média de 7 dias)</h2>
-        {pontosPeso.length === 0 ? (
-          <Vazio>Lance o peso em jejum no registro do dia.</Vazio>
-        ) : (
-          <div className="h-56">
-            <ResponsiveContainer>
-              <LineChart data={pontosPeso} margin={{ left: -20, right: 8, top: 8 }}>
-                <CartesianGrid stroke="#1e293b" />
-                <XAxis dataKey="rotulo" {...eixo} />
-                <YAxis {...eixo} domain={["auto", "auto"]} unit=" kg" width={64} />
-                <Tooltip {...dica} />
-                {usuario.meta_peso_kg && <ReferenceLine y={usuario.meta_peso_kg} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: "meta", fill: "#f59e0b", fontSize: 12 }} />}
-                <Line type="monotone" dataKey="peso" name="Peso do dia" stroke="#475569" dot={{ r: 2 }} strokeWidth={1} />
-                <Line type="monotone" dataKey="media7" name="Média 7 dias" stroke="#34d399" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Cartao>
-
-      {(["kcal", "proteina"] as const).map((campo) => {
-        const meta = campo === "kcal" ? usuario.meta_kcal : usuario.meta_proteina_g;
-        const dados = semanas.filter((s) => s[campo] !== null);
-        return (
-          <Cartao key={campo} className="space-y-3">
-            <h2 className="font-semibold">{campo === "kcal" ? "Calorias" : "Proteína"}: média por semana</h2>
-            {dados.length === 0 ? (
-              <Vazio>{campo === "kcal" ? "Lance as calorias do dia." : "Lance a proteína do dia."}</Vazio>
-            ) : (
-              <div className="h-48">
-                <ResponsiveContainer>
-                  <BarChart data={dados} margin={{ left: -20, right: 8, top: 8 }}>
-                    <CartesianGrid stroke="#1e293b" />
-                    <XAxis dataKey="rotulo" {...eixo} />
-                    <YAxis {...eixo} width={64} unit={campo === "kcal" ? "" : " g"} />
-                    <Tooltip {...dica} formatter={(v) => [campo === "kcal" ? `${v} kcal` : `${v} g`, "Média"]} labelFormatter={(r) => `Semana de ${r}`} />
-                    {meta && <ReferenceLine y={meta} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: "meta", fill: "#f59e0b", fontSize: 12 }} />}
-                    <Bar dataKey={campo} fill={campo === "kcal" ? "#38bdf8" : "#a78bfa"} radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            {!meta && <p className="text-xs text-slate-500">Defina a meta na tela Conta para comparar.</p>}
-          </Cartao>
-        );
-      })}
+      {pedido && <EditorMeta usuarioId={usuario.id} pedido={pedido} fechar={() => setPedido(null)} />}
+      {!pedido && parabens && (
+        <Parabens
+          key={chaveComemoracao(parabens.situacao.meta)}
+          usuarioId={usuario.id}
+          situacao={parabens.situacao}
+          onde={parabens.onde}
+          fechar={() => setVistas((v) => [...v, chaveComemoracao(parabens.situacao.meta)])}
+        />
+      )}
     </div>
   );
 }

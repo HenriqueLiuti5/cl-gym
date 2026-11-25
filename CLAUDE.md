@@ -54,11 +54,22 @@ uv run scripts/preparar.py                # computador novo (veja acima)
 uv sync                                   # instala dependências
 uv run alembic upgrade head               # cria/atualiza o banco local (clgym.db)
 uv run python -m backend.seed             # carrega backend/data/treino.toml no banco
+uv run python -m backend.dados_dev        # enche a conta do "Entrar como dev" com meses de dados
 uv run uvicorn backend.main:app --reload  # API em http://localhost:8000 (docs em /api/docs)
 uv run pytest                             # testes
 uv run ruff check . && uv run ruff format .
 uv run alembic revision --autogenerate -m "descrição"   # depois de mudar models.py
+```
 
+No SQLite as migrações rodam com as chaves estrangeiras desligadas (o modo batch recria a tabela
+para tirar ou mudar coluna, e apagar uma tabela referenciada falharia) e conferem tudo com
+`PRAGMA foreign_key_check` no fim (`backend/migrations/env.py`).
+
+O `backend.dados_dev` só roda em SQLite: gera 20 semanas inventadas (treinos com progressão e
+Plano B, peso caindo, calorias, proteína, carbo, água e metas, uma delas já alcançada) na mesma
+conta do "Entrar como dev". Pode rodar de novo; não mexe no que foi lançado à mão.
+
+```bash
 cd frontend
 npm ci                                    # dependências do app, exatas do package-lock.json
 npm run dev                               # app em http://localhost:5173 (/api vai para a :8000)
@@ -88,24 +99,33 @@ backend/
   models.py             tabelas + esquemas de sincronização
   sync.py               lógica de envio/download, separada por usuário
   routers/auth.py       GET /api/auth/config, POST /api/auth/google, POST /api/auth/dev (só local)
-  routers/conta.py      GET/PATCH/DELETE /api/conta (perfil e metas; apagar a conta)
+  routers/conta.py      GET/PATCH/DELETE /api/conta (perfil; apagar a conta)
   routers/sync.py       GET/POST /api/sync
   seed.py               carrega o catálogo do TOML
+  dados_dev.py          dados inventados para a conta de dev (só SQLite)
   data/treino.toml      exercícios do catálogo e fichas modelo
   migrations/           Alembic
   tests/                conftest (login simulado, sem rede), dados de exemplo e testes
 scripts/preparar.py     prepara um computador novo (.env de dev, banco, seed, npm ci)
 frontend/
   index.html, vite.config.ts   PWA (manifest, service worker, cache das imagens), proxy de /api
-  public/                      ícones
+  public/                      ícones (os PNGs saem do icone.svg, em quadrado inteiro)
+  src/index.css                cores do tema claro e do escuro (variáveis), estilos de base
   src/main.tsx, App.tsx        entrada, rotas por hash (#/treino/<id>) e abas de baixo
   src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
   src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor; gatilhos automáticos
-  src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set, gráficos
+  src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set
+  src/lib/metas.ts             metas: limites, salvar offline, progresso, "na meta", parabéns
+  src/lib/estatisticas.ts      números da Evolução (treinos, recordes, peso, alimentação, escala)
+  src/lib/curiosidades.ts      curiosidades com comparações (elefantes, Pão de Açúcar, ovos...)
   src/lib/perfil.ts            perfil (primeiro acesso e Conta): limites, altura, peso atual
-  src/lib/ids.ts               UUID v4 e v5 (id do registro do dia), sem depender de https
+  src/lib/ids.ts               UUID v4 e v5 (ids do registro do dia e das metas), sem https
   src/lib/api.ts, sessao.ts    chamadas à API, token, login (Google e dev), sair
   src/telas/                   Login, BoasVindas, Inicio, FichaTela, Treino, Dia, Graficos, Conta
+  src/componentes/ui.tsx       peças de tela: botão, lista agrupada, linha com campo, segmentos,
+                               aviso, janela (Modal) e Confirmar
+  src/componentes/icones.tsx   ícones em SVG (traço simples, desenhados no projeto)
+  src/componentes/evolucao/    abas da Evolução, gráfico com meta, seletor de exercício, cores
 vercel.json             build do frontend + rewrite /api/* → função Python
 .nvmrc                  versão do Node (usada também pela CI)
 .vscode/                extensões recomendadas e ruff ao salvar (o resto da pasta é ignorado)
@@ -123,7 +143,7 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
 - Todo registro tem `id` (UUID **gerado no app**), `atualizado_em` (com fuso), `excluido`
   (exclusão lógica, nunca apagar de verdade) e `versao` (definida pelo servidor).
 - `POST /api/sync`: o app envia `{exercicios, fichas, ficha_exercicios, sessoes, series,
-  registros_diarios}` com o que mudou localmente. **Vence o `atualizado_em` mais recente**; registro igual ou mais antigo é
+  registros_diarios, metas}` com o que mudou localmente. **Vence o `atualizado_em` mais recente**; registro igual ou mais antigo é
   ignorado (reenviar é seguro). O envio é atômico: uma referência inválida devolve 409 e nada é
   gravado.
 - `GET /api/sync?desde=<cursor>`: devolve o que mudou depois do cursor e o novo `cursor`. O app
@@ -131,8 +151,8 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
 - Ciclo do app: enviar pendentes → baixar desde o último cursor → salvar o cursor. No download,
   uma mudança local ainda pendente e mais nova que a do servidor é mantida.
 - **Quando sincroniza (automático):** ao abrir o app e ao voltar para ele depois de 5 min ou mais
-  em segundo plano; uns 2 s depois de salvar algo fora do treino (registro do dia, perfil, ajuste
-  da ficha, cancelar treino), juntando mudanças seguidas (`sincronizarEmBreve`); ao terminar um
+  em segundo plano; uns 2 s depois de salvar algo fora do treino (registro do dia, perfil, metas,
+  ajuste da ficha, cancelar treino), juntando mudanças seguidas (`sincronizarEmBreve`); ao terminar um
   treino; quando a internet volta (evento `online`); e no botão "Sincronizar" da tela Conta. As
   séries do treino em andamento não disparam sincronização: vão juntas no fim. Se o app for para
   segundo plano com uma sincronização agendada, ela sai na hora. Nunca em intervalo fixo. Uma
@@ -159,8 +179,9 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 
 - **Usuario** (não sincroniza; `GET/PATCH /api/conta`): `id`, `google_sub` (único), `email`,
   `criado_em` e o perfil, todo opcional: `nome` (vem do Google no primeiro login; depois é a
-  pessoa quem muda, e o login não troca mais), `altura_cm` (50–250), `idade` (10–120) e as metas
-  `meta_kcal`, `meta_proteina_g`, `meta_peso_kg`. O peso atual não fica aqui (veja "Perfil").
+  pessoa quem muda, e o login não troca mais), `altura_cm` (50–250) e `idade` (10–120). O peso
+  atual não fica aqui (veja "Perfil"), nem as metas (tabela `Meta`, que sincroniza e funciona
+  offline).
 - **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT) e midia_url (GIF
   ou vídeo). Os do catálogo vêm do seed e só o seed altera; cada um pode criar os seus. É o único
   download que traz `usuario_id` (nulo = catálogo, só leitura no app).
@@ -173,8 +194,14 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 - **Serie**: uma série registrada (sessao_id, exercicio_id **realmente feito**,
   ficha_exercicio_id planejado, numero, carga_kg, repeticoes). Cada exercício, inclusive as
   alternativas, tem o próprio histórico de carga.
-- **RegistroDiario**: um por usuário e `data`, com `peso_kg` (em jejum), `kcal`, `proteina_g` e
-  `observacao`, todos opcionais.
+- **RegistroDiario**: um por usuário e `data`, com `peso_kg` (em jejum), `kcal`, `proteina_g`,
+  `carbo_g`, `agua_ml` e `observacao`, todos opcionais.
+- **Meta**: `tipo` (`peso`, `carga`, `kcal`, `proteina`, `carbo`, `agua` em ml, `treinos_semana`),
+  `valor`, `exercicio_id` (só e sempre nas de carga) e `inicio` (peso ou recorde quando a meta foi
+  definida: dá o sentido e o progresso). Limites por tipo em `LIMITES_META` (`models.py`, igual em
+  `lib/metas.ts`). Uma por tipo, e uma por exercício nas de carga (índices únicos parciais): o app
+  gera o `id` como UUID v5 de usuário + tipo + exercício, igual em todos os aparelhos; dois ids
+  para a mesma meta dão 409.
 
 ## Regras de negócio (implementar no frontend, sobre os dados locais)
 
@@ -187,6 +214,25 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 - **Trocar**: alterna entre o exercício planejado e as alternativas do item (Plano B); a série é
   gravada com o `exercicio_id` do que foi feito.
 - **Gráfico de evolução**: por exercício, a maior `carga_kg` de cada sessão ao longo do tempo.
+- **Evolução** (decidido em 24/11/2026: "muitas informações e curiosidades", gráficos fáceis de
+  entender): abas Treino, Corpo, Nutrição e Curiosidades (`#/graficos/<aba>`). Cada gráfico diz o
+  que mostra numa frase, tem "Ver os números" (tabela) e usa uma cor por assunto (validadas para
+  contraste e daltonismo nos dois temas: valores em `src/index.css`, `--color-g-*`; nomes em
+  `componentes/evolucao/cores.ts`). O exercício se escolhe numa lista própria com busca e grupos,
+  **nunca o `<select>` do navegador**.
+- **Metas nos gráficos:** a meta é um **alvo** desenhado (círculo com um ponto; ao chegar, círculo
+  verde com um visto) num lugar extra "Meta" no fim do eixo (na linha, um tracejado liga o último
+  valor até ele; nas barras, uma linha tracejada na altura da meta, e as barras fora da meta ficam
+  apagadas). Peso (pela média de 7 dias) e carga (recorde) são
+  **destinos**: mostram o caminho feito, quanto falta e, no peso, a previsão no ritmo atual; ao
+  chegar, o app dá **parabéns e pergunta pela próxima meta** (com sugestão). A comemoração é
+  guardada por aparelho (`metas_comemoradas`) e volta se a meta mudar. As do dia a dia não
+  comemoram: "na meta" é ±10% em calorias e carbo, e chegar pelo menos nela em proteína, água e
+  treinos por semana.
+- **Registrar a série:** cada linha tem "Anterior" (carga × reps da mesma série na última vez),
+  kg (já vem com a carga sugerida), reps (a dica é o alvo) e um botão de marcar. Marcar grava a
+  série e pinta a linha de verde; tocar de novo desmarca (apaga a série) e deixa os números nos
+  campos. Mudar um número de uma série marcada faz o botão gravar de novo.
 - Sem timer de descanso na primeira versão.
 - **Perfil (primeiro acesso):** enquanto faltar nome, altura ou idade, o app abre a tela de
   boas-vindas pedindo nome, peso, altura e idade antes de qualquer outra. O **peso atual** é o
@@ -194,6 +240,27 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
   que funciona offline e já aparece no gráfico. Nome, altura e idade vão por `PATCH /api/conta` e
   precisam de internet; sem ela, o primeiro acesso oferece "Preencher depois" e pergunta de novo
   na próxima abertura. A altura aceita metros ("1,78" vira 178 cm).
+
+## Design
+
+Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para o celular.
+
+- **Sem emojis** em nenhum lugar (abas, avisos, metas, curiosidades). Ícone é SVG de
+  `componentes/icones.tsx`; o que não tem ícone vira texto ou etiqueta ("Aquecimento", "Bi-set").
+- **Sem neon, gradiente, brilho ou vidro.** Fundo cinza-claro, cartões brancos, um acento azul
+  sóbrio para o que é tocável (botão principal, links, aba ativa). Verde, âmbar e vermelho só para
+  estado (feito/sobe o peso, pesado demais, apagar), sempre com ícone e texto.
+- **Fonte do sistema** (San Francisco no iPhone, Roboto no Android). Nada de fonte baixada.
+  Corpo de 15–17 px; campos com 17 px, porque abaixo de 16 px o iPhone dá zoom ao tocar.
+- **Tema claro e escuro, seguindo o celular.** As cores ficam só em `src/index.css`, como
+  variáveis (`bg-superficie`, `text-texto-2`, `text-acento`...); a paleta padrão do Tailwind está
+  desligada. Todo texto passa de 4,5:1 de contraste nos dois temas. No iPhone, a barra de status
+  usa `default` e o `theme-color` acompanha o tema.
+- **Padrões de celular:** título grande nas abas, barra fixa com voltar nas telas internas, listas
+  agrupadas (estilo ajustes), campos em linha com a unidade ao lado, seletor de segmentos no lugar
+  de abas de texto. Confirmação é a janela `Confirmar` do app, nunca o `confirm()` do navegador.
+- Ícone do app: halter branco sobre o azul do acento; os PNGs saem do `public/icone.svg` em
+  quadrado inteiro (o sistema aplica a máscara), com o desenho dentro da área segura.
 
 ## Catálogo (seed)
 
@@ -223,11 +290,11 @@ mudar à vontade (nova migração, sem migrar dados).
 - Remover um e-mail da lista bloqueia novos logins e a sincronização daquele usuário.
 
 ### Dados por usuário
-- Nova tabela **Usuario**: `id`, `google_sub` (único), `email`, `nome`, `criado_em`, o perfil
-  (`altura_cm`, `idade`) e as metas (`meta_kcal`, `meta_proteina_g`, `meta_peso_kg`), tudo
-  opcional.
+- Nova tabela **Usuario**: `id`, `google_sub` (único), `email`, `nome`, `criado_em` e o perfil
+  (`altura_cm`, `idade`), tudo opcional. As metas são a tabela sincronizável **Meta** (por
+  usuário), para mudarem offline, inclusive na academia.
 - **Todo registro pessoal tem `usuario_id`**: fichas, itens da ficha, sessões, séries, registro
-  diário e exercícios criados pelo usuário. O servidor **define o `usuario_id` a partir do token**
+  diário, metas e exercícios criados pelo usuário. O servidor **define o `usuario_id` a partir do token**
   e ignora o que vier do app.
 - **Catálogo compartilhado:** exercícios com `usuario_id` nulo vêm do seed, todos baixam e
   ninguém edita. Cada um pode criar exercícios próprios.
@@ -242,8 +309,8 @@ mudar à vontade (nova migração, sem migrar dados).
   entre as séries.
 - **Progressão:** se a primeira série da última vez fez **alvo + 2** reps ou mais, o app mostra
   "sobe o peso". Se alguma série ficou **2 ou mais abaixo do alvo**, mostra "pesado demais".
-- **Aquecimento 🔥:** `aquecimento: bool` no item da ficha (normalmente só o primeiro exercício).
-  Mostra "1×10 leve (~50% do peso)". Não conta como série.
+- **Aquecimento:** `aquecimento: bool` no item da ficha (normalmente só o primeiro exercício).
+  Mostra a etiqueta "Aquecimento" e "1×10 leve (uns 50% do peso)". Não conta como série.
 - **Bi-set:** `grupo_biset: int | None` no item da ficha. Itens da mesma ficha com o mesmo valor são
   feitos em sequência, descansando só depois do par. Se um tiver mais séries, as voltas extras são
   só dele.
@@ -259,11 +326,13 @@ mudar à vontade (nova migração, sem migrar dados).
 
 ### Peso e alimentação
 - Tabela **RegistroDiario** (sincronizável, por usuário, uma por `data`): `peso_kg` (em jejum),
-  `kcal`, `proteina_g` e `observacao` (ex.: jogo de basquete). Tudo opcional.
+  `kcal`, `proteina_g`, `carbo_g`, `agua_ml` e `observacao` (ex.: jogo de basquete). Tudo
+  opcional. A água é digitada em litros e tem botões de +250 ml, +500 ml e +1 L que já salvam.
 - **Não conta comida dentro do app**: cada um usa o FatSecret (ou outro app grátis) e lança só o
   total do dia.
-- Gráficos: média de 7 dias do peso (o alvo do Henrique é cair 0,2–0,4 kg por semana) e média
-  semanal de kcal e proteína contra as metas.
+- Gráficos: média de 7 dias do peso (o alvo do Henrique é cair 0,2–0,4 kg por semana), variação
+  semana a semana, e calorias, proteína, carbo e água por dia (14 dias) ou por semana, contra as
+  metas; de onde vêm as calorias (proteína e carbo a 4 kcal/g).
 - **Sem fotos do físico.** Decidido em 24/11/2026: não precisa.
 
 ### Privacidade
@@ -342,4 +411,7 @@ mudar à vontade (nova migração, sem migrar dados).
 - [x] Frontend PWA (login, treino offline, última vez, progressão, registro do dia, gráficos,
   metas e apagar conta)
 - [x] Primeiro acesso com perfil (nome, peso, altura, idade) e tela Conta revista (24/11/2026)
+- [x] Evolução com abas, metas (alvo no gráfico e parabéns), curiosidades, carbo e água, e dados
+  de exemplo para a conta de dev (24/11/2026)
+- [x] Redesenho: visual simples e profissional, sem emojis, tema claro e escuro (24/11/2026)
 - [ ] Deploy Vercel + Neon e instalação nos celulares

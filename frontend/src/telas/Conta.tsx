@@ -2,13 +2,16 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 
 import { FormularioPerfil } from "../componentes/FormularioPerfil";
-import { Aviso, Botao, Campo, Cartao, estiloEntrada, Modal, Titulo } from "../componentes/ui";
+import { Icone } from "../componentes/icones";
+import { Aviso, Botao, Campo, Cartao, Confirmar, estiloEntrada, estiloEntradaLinha, Grupo, Linha, LinhaCampo, Modal, Titulo } from "../componentes/ui";
 import { api, ErroApi } from "../lib/api";
-import { db, gravarMeta } from "../lib/db";
+import { db } from "../lib/db";
+import { pontosDePeso } from "../lib/estatisticas";
 import { formatarData, lerNumero } from "../lib/formato";
+import { acharMeta, daTela, paraTela, removerMeta, salvarMeta, validarMeta } from "../lib/metas";
 import { sair } from "../lib/sessao";
 import { sincronizar, type EstadoSync } from "../lib/sync";
-import { TABELAS, type Usuario } from "../lib/tipos";
+import { TABELAS, type Meta, type TipoMeta, type Usuario } from "../lib/tipos";
 
 async function contarPendentes(): Promise<number> {
   const contagens = await Promise.all(TABELAS.map((t) => db[t].where("pendente").equals(1).count()));
@@ -17,89 +20,104 @@ async function contarPendentes(): Promise<number> {
 
 const alteracoes = (n: number) => `${n} ${n === 1 ? "alteração" : "alterações"}`;
 
-function Metas({ usuario }: { usuario: Usuario }) {
-  const texto = (n: number | null) => (n === null ? "" : String(n).replace(".", ","));
-  const [kcal, setKcal] = useState(texto(usuario.meta_kcal));
-  const [proteina, setProteina] = useState(texto(usuario.meta_proteina_g));
-  const [peso, setPeso] = useState(texto(usuario.meta_peso_kg));
+const CAMPOS_META: { tipo: TipoMeta; rotulo: string; unidade: string }[] = [
+  { tipo: "peso", rotulo: "Peso alvo", unidade: "kg" },
+  { tipo: "treinos_semana", rotulo: "Treinos por semana", unidade: "" },
+  { tipo: "kcal", rotulo: "Calorias por dia", unidade: "kcal" },
+  { tipo: "proteina", rotulo: "Proteína por dia", unidade: "g" },
+  { tipo: "carbo", rotulo: "Carboidrato por dia", unidade: "g" },
+  { tipo: "agua", rotulo: "Água por dia", unidade: "L" },
+];
+
+function FormularioMetas({ usuario, metas, pesoAtual }: { usuario: Usuario; metas: Meta[]; pesoAtual: number | null }) {
+  const [textos, setTextos] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      CAMPOS_META.map(({ tipo }) => {
+        const meta = acharMeta(metas, tipo);
+        return [tipo, meta ? String(paraTela(tipo, meta.valor)).replace(".", ",") : ""];
+      }),
+    ),
+  );
   const [mensagem, setMensagem] = useState<{ tipo: "bom" | "ruim"; texto: string } | null>(null);
 
   async function gravar() {
-    try {
-      const atualizado = await api<Usuario>("/conta", {
-        metodo: "PATCH",
-        corpo: { meta_kcal: lerNumero(kcal), meta_proteina_g: lerNumero(proteina), meta_peso_kg: lerNumero(peso) },
-      });
-      await gravarMeta("usuario", atualizado);
-      setMensagem({ tipo: "bom", texto: "Metas salvas." });
-    } catch (e) {
-      const texto = e instanceof ErroApi && e.status === 0 ? "As metas precisam de internet para salvar." : "Confira os números.";
-      setMensagem({ tipo: "ruim", texto });
+    // Confere tudo antes de gravar qualquer coisa.
+    const mudancas: { tipo: TipoMeta; valor: number | null; atual: Meta | null }[] = [];
+    for (const { tipo, rotulo } of CAMPOS_META) {
+      const texto = textos[tipo]!.trim();
+      const atual = acharMeta(metas, tipo);
+      const numero = lerNumero(texto);
+      const valor = numero === null ? null : daTela(tipo, numero);
+      if (texto && valor === null) return setMensagem({ tipo: "ruim", texto: `${rotulo}: digite um número.` });
+      const erro = valor === null ? null : validarMeta(tipo, valor);
+      if (erro) return setMensagem({ tipo: "ruim", texto: `${rotulo}: ${erro}` });
+      if ((atual?.valor ?? null) !== valor) mudancas.push({ tipo, valor, atual });
     }
+    for (const { tipo, valor, atual } of mudancas) {
+      if (valor === null) await removerMeta(atual!);
+      else await salvarMeta(usuario.id, tipo, valor, tipo === "peso" ? pesoAtual : null);
+    }
+    setMensagem({ tipo: "bom", texto: mudancas.length ? "Metas salvas." : "Nada mudou." });
   }
 
   return (
-    <Cartao className="space-y-3">
-      <h2 className="font-semibold">Metas</h2>
-      {/* items-end: se um rótulo quebrar em duas linhas (celular estreito), as caixas seguem alinhadas. */}
-      <div className="grid grid-cols-3 items-end gap-2">
-        <Campo rotulo="kcal/dia">
-          <input className={estiloEntrada} inputMode="numeric" value={kcal} onChange={(e) => setKcal(e.target.value)} />
-        </Campo>
-        <Campo rotulo="Proteína (g)">
-          <input className={estiloEntrada} inputMode="decimal" value={proteina} onChange={(e) => setProteina(e.target.value)} />
-        </Campo>
-        <Campo rotulo="Peso alvo (kg)">
-          <input className={estiloEntrada} inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
-        </Campo>
-      </div>
+    <div className="space-y-4">
+      <Grupo titulo="Metas" rodape="Deixe vazio para tirar a meta. A meta de carga de cada exercício fica na aba Evolução.">
+        {CAMPOS_META.map(({ tipo, rotulo, unidade }) => (
+          <LinhaCampo key={tipo} rotulo={rotulo} unidade={unidade}>
+            <input
+              className={`${estiloEntradaLinha} w-24`}
+              inputMode={tipo === "kcal" || tipo === "treinos_semana" ? "numeric" : "decimal"}
+              value={textos[tipo]}
+              onChange={(e) => {
+                setTextos((t) => ({ ...t, [tipo]: e.target.value }));
+                setMensagem(null);
+              }}
+            />
+          </LinhaCampo>
+        ))}
+      </Grupo>
       {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
-      <Botao variante="principal" className="w-full" onClick={gravar}>
+      <Botao variante="principal" className="w-full" onClick={() => void gravar()}>
         Salvar metas
       </Botao>
-    </Cartao>
+    </div>
   );
+}
+
+function Metas({ usuario }: { usuario: Usuario }) {
+  const metas = useLiveQuery(() => db.metas.toArray(), []);
+  const registros = useLiveQuery(() => db.registros_diarios.toArray(), []);
+  if (!metas || !registros) return null;
+  const pesos = pontosDePeso(registros);
+  return <FormularioMetas usuario={usuario} metas={metas} pesoAtual={pesos[pesos.length - 1]?.media7 ?? null} />;
 }
 
 function Sincronizar() {
   const estado = useLiveQuery(() => db.meta.get("estado_sync"), [])?.valor as EstadoSync | undefined;
   const pendentes = useLiveQuery(contarPendentes, []);
-  const [ajuda, setAjuda] = useState(false);
   const sincronizando = estado?.situacao === "sincronizando";
   const ultima = estado?.quando
     ? formatarData(estado.quando, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-    : null;
+    : "Ainda não";
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center">
-        <Botao tamanho="pequeno" disabled={sincronizando} onClick={() => void sincronizar()}>
-          ↻ {sincronizando ? "Sincronizando…" : "Sincronizar"}
-        </Botao>
-        <button
-          type="button"
-          aria-label="O que o Sincronizar faz"
-          aria-expanded={ajuda}
-          onClick={() => setAjuda((a) => !a)}
-          className="p-2"
-        >
-          <span className="grid h-4 w-4 place-items-center rounded-full border border-slate-500 text-[10px] leading-none font-bold text-slate-400">
-            !
-          </span>
-        </button>
-      </div>
-      {ajuda && (
-        <p className="rounded-xl bg-slate-900 px-3 py-2 text-xs leading-relaxed text-slate-400">
-          Envia para a nuvem o que você registrou neste aparelho e baixa o que mudou nos outros. Isso já acontece
-          sozinho ao abrir o app, logo depois de salvar, ao terminar um treino e quando a internet volta (sem
-          internet, fica tudo no aparelho até lá); o botão é para forçar agora.
-          <span className="mt-1 block text-slate-500">
-            {ultima && `Última vez: ${ultima}. `}
-            {pendentes ? `${alteracoes(pendentes)} esperando para enviar.` : "Nada pendente."}
-          </span>
-        </p>
-      )}
-    </div>
+    <Grupo
+      titulo="Sincronização"
+      rodape="Envia para a nuvem o que você registrou neste aparelho e baixa o que mudou nos outros. Já acontece sozinho ao abrir o app, depois de salvar, ao terminar um treino e quando a internet volta. Sem internet, tudo fica no aparelho até lá."
+    >
+      <Linha titulo="Última vez" direita={ultima} />
+      <Linha titulo="Esperando para enviar" direita={pendentes === undefined ? "" : pendentes ? alteracoes(pendentes) : "Nada"} />
+      <button
+        type="button"
+        disabled={sincronizando}
+        onClick={() => void sincronizar()}
+        className="flex min-h-12 w-full items-center gap-2 px-4 py-3 text-left text-[17px] text-acento active:bg-campo disabled:opacity-50"
+      >
+        <Icone nome="sincronizar" className={`h-5 w-5 ${sincronizando ? "animate-spin" : ""}`} />
+        {sincronizando ? "Sincronizando…" : "Sincronizar agora"}
+      </button>
+    </Grupo>
   );
 }
 
@@ -123,7 +141,7 @@ function ApagarConta({ fechar }: { fechar: () => void }) {
 
   return (
     <Modal titulo="Apagar minha conta" fechar={fechar}>
-      <p className="text-sm text-slate-300">
+      <p className="text-[15px] leading-snug text-texto-2">
         Apaga de verdade, no servidor e neste aparelho, todos os seus treinos, cargas e registros. Não tem volta.
       </p>
       <Campo rotulo='Digite "apagar" para confirmar'>
@@ -137,7 +155,7 @@ function ApagarConta({ fechar }: { fechar: () => void }) {
           spellCheck={false}
         />
       </Campo>
-      {erro && <Aviso tipo="ruim">{erro}</Aviso>}
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
       <div className="grid grid-cols-2 gap-2">
         <Botao onClick={fechar}>Cancelar</Botao>
         <Botao variante="perigo" disabled={confirmacao.trim().toLowerCase() !== "apagar" || apagando} onClick={apagar}>
@@ -151,43 +169,48 @@ function ApagarConta({ fechar }: { fechar: () => void }) {
 export function Conta({ usuario }: { usuario: Usuario }) {
   const registros = useLiveQuery(() => db.registros_diarios.toArray(), []);
   const [apagando, setApagando] = useState(false);
+  // Quantas alterações ainda não foram enviadas, contadas ao pedir para sair.
+  const [saindo, setSaindo] = useState<number | null>(null);
   const nome = usuario.nome?.trim() || usuario.email;
 
-  async function sairDaConta() {
-    const pendentes = await contarPendentes();
-    const aviso = pendentes
-      ? `Há ${alteracoes(pendentes)} que ainda não foram enviadas e vão se perder. Sair mesmo assim?`
-      : "Sair desta conta neste aparelho?";
-    if (confirm(aviso)) await sair();
-  }
-
   return (
-    <div className="space-y-4">
+    <div>
       <Titulo>Conta</Titulo>
-      <Cartao className="flex items-center gap-3">
-        <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-500 text-xl font-bold text-slate-950">
-          {Array.from(nome)[0]?.toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xl font-semibold">{nome}</p>
-          {usuario.nome && <p className="truncate text-sm text-slate-400">{usuario.email}</p>}
-        </div>
-        <button type="button" onClick={sairDaConta} className="self-start px-1 text-xs text-slate-500 active:text-slate-300">
-          Sair
-        </button>
-      </Cartao>
+      <div className="space-y-7">
+        <Cartao className="flex items-center gap-3.5">
+          <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-campo text-[22px] font-semibold text-texto-2">
+            {Array.from(nome)[0]?.toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[20px] leading-tight font-semibold">{nome}</p>
+            {usuario.nome && <p className="mt-0.5 truncate text-[15px] text-texto-2">{usuario.email}</p>}
+          </div>
+        </Cartao>
 
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Seus dados</h2>
-        {registros && <FormularioPerfil usuario={usuario} registros={registros} rotulo="Salvar" />}
-      </Cartao>
+        {registros && <FormularioPerfil usuario={usuario} registros={registros} rotulo="Salvar dados" titulo="Seus dados" />}
+        <Metas usuario={usuario} />
+        <Sincronizar />
 
-      <Metas usuario={usuario} />
-      <Sincronizar />
+        <Grupo>
+          <Linha titulo="Sair desta conta" tom="acento" onClick={() => void contarPendentes().then(setSaindo)} />
+          <Linha titulo="Apagar minha conta" tom="perigo" onClick={() => setApagando(true)} />
+        </Grupo>
+      </div>
 
-      <Botao variante="perigoLeve" tamanho="pequeno" className="w-full" onClick={() => setApagando(true)}>
-        Apagar minha conta
-      </Botao>
+      {saindo !== null && (
+        <Confirmar
+          titulo="Sair desta conta?"
+          mensagem={
+            saindo
+              ? `Há ${alteracoes(saindo)} que ainda não foram enviadas e vão se perder.`
+              : "O que já foi sincronizado fica guardado. Para voltar, é só entrar de novo."
+          }
+          rotulo="Sair"
+          perigo={saindo > 0}
+          confirmar={sair}
+          fechar={() => setSaindo(null)}
+        />
+      )}
       {apagando && <ApagarConta fechar={() => setApagando(false)} />}
     </div>
   );

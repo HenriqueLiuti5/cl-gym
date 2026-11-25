@@ -128,7 +128,8 @@ export function evolucao(exercicioId: string, series: Serie[], sessoes: Sessao[]
     .sort((a, b) => Date.parse(a.data) - Date.parse(b.data));
 }
 
-function somarDias(data: string, dias: number): string {
+/** Soma (ou subtrai) dias a uma data AAAA-MM-DD. */
+export function somarDias(data: string, dias: number): string {
   const [a, m, d] = data.split("-").map(Number) as [number, number, number];
   return dataLocal(new Date(a, m - 1, d + dias));
 }

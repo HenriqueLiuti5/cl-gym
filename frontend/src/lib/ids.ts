@@ -1,6 +1,8 @@
 // IDs gerados no aparelho. Funciona também em http:// (ex.: testar pelo IP da rede), onde
 // crypto.randomUUID e crypto.subtle não existem.
 
+import type { TipoMeta } from "./tipos";
+
 function hex(bytes: Uint8Array): string {
   const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
@@ -78,4 +80,12 @@ const NAMESPACE_REGISTRO_DIARIO = "3c5b8f0e-2a4d-4f6b-9e1a-7d2c6b9a0f13";
 /** Só pode haver um registro por dia: o id sai do usuário + data, igual em todo aparelho. */
 export function idRegistroDiario(usuarioId: string, data: string): string {
   return uuid5(`${usuarioId}:${data}`, NAMESPACE_REGISTRO_DIARIO);
+}
+
+// Fixo, igual ao de backend/dados_dev.py: muda isto e as metas deixam de bater entre os aparelhos.
+const NAMESPACE_METAS = "d398a7b8-d44e-49d6-8104-b0586e9eac28";
+
+/** Só há uma meta por tipo (e por exercício, nas de carga): o id sai do usuário, tipo e exercício. */
+export function idMeta(usuarioId: string, tipo: TipoMeta, exercicioId: string | null = null): string {
+  return uuid5(`${usuarioId}:${tipo}:${exercicioId ?? ""}`, NAMESPACE_METAS);
 }

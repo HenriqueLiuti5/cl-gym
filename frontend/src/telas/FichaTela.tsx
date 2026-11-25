@@ -1,12 +1,16 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { useState } from "react";
 
+import { BotaoComecar } from "../componentes/BotaoComecar";
 import { Demonstracao } from "../componentes/Demonstracao";
-import { Botao, Cartao, Titulo } from "../componentes/ui";
+import { Icone } from "../componentes/icones";
+import { BarraTopo, Etiqueta } from "../componentes/ui";
 import { db, salvar } from "../lib/db";
 import { blocos } from "../lib/regras";
 import { sincronizarEmBreve } from "../lib/sync";
-import { comecarTreino } from "../lib/treino";
-import type { FichaExercicio } from "../lib/tipos";
+import type { Exercicio, FichaExercicio } from "../lib/tipos";
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 function Ajuste({ rotulo, valor, min, max, aoMudar }: {
   rotulo: string;
@@ -15,16 +19,55 @@ function Ajuste({ rotulo, valor, min, max, aoMudar }: {
   max: number;
   aoMudar: (v: number) => void;
 }) {
+  const botao = "grid h-10 w-10 place-items-center rounded-lg bg-campo text-texto active:opacity-75 disabled:opacity-40";
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-12 text-sm text-slate-400">{rotulo}</span>
-      <button type="button" aria-label={`Menos ${rotulo}`} className="h-9 w-9 rounded-lg bg-slate-800" disabled={valor <= min} onClick={() => aoMudar(valor - 1)}>
-        −
-      </button>
-      <span className="w-8 text-center text-lg font-semibold">{valor}</span>
-      <button type="button" aria-label={`Mais ${rotulo}`} className="h-9 w-9 rounded-lg bg-slate-800" disabled={valor >= max} onClick={() => aoMudar(valor + 1)}>
-        +
-      </button>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[15px] text-texto-2">{rotulo}</span>
+      <div className="flex items-center gap-1">
+        <button type="button" aria-label={`Menos ${rotulo.toLowerCase()}`} className={botao} disabled={valor <= min} onClick={() => aoMudar(valor - 1)}>
+          <Icone nome="menos" className="h-4.5 w-4.5" />
+        </button>
+        <span className="w-10 text-center text-[17px] font-semibold tabular-nums">{valor}</span>
+        <button type="button" aria-label={`Mais ${rotulo.toLowerCase()}`} className={botao} disabled={valor >= max} onClick={() => aoMudar(valor + 1)}>
+          <Icone nome="mais" className="h-4.5 w-4.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ItemFicha({ item, porId, editando }: { item: FichaExercicio; porId: Map<string, Exercicio>; editando: boolean }) {
+  const exercicio = porId.get(item.exercicio_id);
+  const nome = (id: string) => porId.get(id)?.nome ?? "Exercício";
+  const alterar = async (campos: Partial<FichaExercicio>) => {
+    await salvar("ficha_exercicios", { ...item, ...campos });
+    sincronizarEmBreve();
+  };
+
+  return (
+    <div className="space-y-2 p-4">
+      <div>
+        <p className="text-[17px] leading-snug font-semibold">{nome(item.exercicio_id)}</p>
+        <p className="mt-0.5 text-[15px] text-texto-2">
+          {plural(item.series, "série", "séries")} × {item.alvo_reps} reps
+        </p>
+      </div>
+      {item.aquecimento && (
+        <p className="text-[14px] leading-snug text-texto-2">
+          <Etiqueta tom="aviso">Aquecimento</Etiqueta> Antes, 1×10 leve (uns 50% do peso). Não conta como série.
+        </p>
+      )}
+      {item.observacao && <p className="text-[14px] leading-snug text-texto-2">{item.observacao}</p>}
+      {item.alternativas.length > 0 && (
+        <p className="text-[14px] leading-snug text-texto-3">Plano B: {item.alternativas.map(nome).join(", ")}</p>
+      )}
+      {editando && (
+        <div className="space-y-2 rounded-lg border border-linha p-3">
+          <Ajuste rotulo="Séries" valor={item.series} min={1} max={20} aoMudar={(series) => void alterar({ series })} />
+          <Ajuste rotulo="Alvo de repetições" valor={item.alvo_reps} min={1} max={100} aoMudar={(alvo_reps) => void alterar({ alvo_reps })} />
+        </div>
+      )}
+      {exercicio && <Demonstracao exercicio={exercicio} />}
     </div>
   );
 }
@@ -33,57 +76,53 @@ export function FichaTela({ fichaId }: { fichaId: string }) {
   const ficha = useLiveQuery(() => db.fichas.get(fichaId), [fichaId]);
   const itens = useLiveQuery(() => db.ficha_exercicios.where("ficha_id").equals(fichaId).toArray(), [fichaId]);
   const exercicios = useLiveQuery(() => db.exercicios.toArray(), []);
+  const [editando, setEditando] = useState(false);
   if (!ficha || !itens || !exercicios) return null;
 
   const porId = new Map(exercicios.map((e) => [e.id, e]));
-  const nome = (id: string) => porId.get(id)?.nome ?? "Exercício";
-  const alterar = async (item: FichaExercicio, campos: Partial<FichaExercicio>) => {
-    await salvar("ficha_exercicios", { ...item, ...campos });
-    sincronizarEmBreve();
-  };
+  const lista = blocos(itens);
+  const ativos = lista.flat();
+  const series = ativos.reduce((soma, i) => soma + i.series, 0);
 
   return (
-    <div className="space-y-3">
-      <Titulo voltar="#/">{ficha.nome}</Titulo>
-      <Botao variante="principal" className="w-full" onClick={() => comecarTreino(ficha.id)}>
-        Começar este treino
-      </Botao>
+    <div>
+      <BarraTopo
+        voltar="#/"
+        titulo={ficha.nome}
+        acao={
+          <button type="button" onClick={() => setEditando((e) => !e)} className="h-11 rounded-lg px-2 text-[17px] text-acento active:bg-campo">
+            {editando ? "Pronto" : "Editar"}
+          </button>
+        }
+      />
+      <p className="mb-4 px-1 text-[15px] text-texto-2">
+        {plural(ativos.length, "exercício", "exercícios")} · {plural(series, "série", "séries")}
+      </p>
+      {editando ? (
+        <p className="rounded-lg bg-campo px-3 py-2.5 text-[15px] leading-snug text-texto-2">
+          Ajuste as séries e o alvo de repetições. Vale para os próximos treinos desta ficha.
+        </p>
+      ) : (
+        <BotaoComecar fichaId={ficha.id} className="w-full" />
+      )}
 
-      {blocos(itens).map((bloco) => (
-        <div key={bloco[0]!.id} className={bloco.length > 1 ? "space-y-2 rounded-2xl border border-sky-800 p-2" : ""}>
-          {bloco.length > 1 && (
-            <p className="px-2 text-sm text-sky-300">
-              Bi-set: uma série de cada, em sequência. Descanse só depois do par.
-            </p>
-          )}
-          {bloco.map((item) => {
-            const exercicio = porId.get(item.exercicio_id);
-            return (
-              <Cartao key={item.id} className="space-y-2">
-                <p className="text-lg font-semibold">
-                  {item.aquecimento && <span title="Aquecer antes">🔥 </span>}
-                  {nome(item.exercicio_id)}
-                </p>
-                <p className="text-slate-300">
-                  {item.series} séries de <strong>{item.alvo_reps}</strong> reps
-                </p>
-                {item.aquecimento && <p className="text-sm text-orange-300">🔥 Antes: 1×10 leve (~50% do peso). Não conta como série.</p>}
-                {item.observacao && <p className="text-sm text-slate-400">💡 {item.observacao}</p>}
-                {item.alternativas.length > 0 && (
-                  <p className="text-sm text-slate-400">
-                    Plano B: {item.alternativas.map(nome).join(" · ")}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
-                  <Ajuste rotulo="Séries" valor={item.series} min={1} max={20} aoMudar={(series) => alterar(item, { series })} />
-                  <Ajuste rotulo="Alvo" valor={item.alvo_reps} min={1} max={100} aoMudar={(alvo_reps) => alterar(item, { alvo_reps })} />
-                </div>
-                {exercicio && <Demonstracao exercicio={exercicio} />}
-              </Cartao>
-            );
-          })}
-        </div>
-      ))}
+      <div className="mt-6 space-y-3">
+        {lista.map((bloco) => (
+          <section key={bloco[0]!.id} className="overflow-hidden rounded-xl bg-superficie">
+            {bloco.length > 1 && (
+              <div className="flex items-center gap-2 border-b border-linha px-4 py-2.5">
+                <Etiqueta>Bi-set</Etiqueta>
+                <p className="text-[13px] leading-snug text-texto-2">Uma série de cada, em sequência. Descanse depois do par.</p>
+              </div>
+            )}
+            <div className="lista">
+              {bloco.map((item) => (
+                <ItemFicha key={item.id} item={item} porId={porId} editando={editando} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

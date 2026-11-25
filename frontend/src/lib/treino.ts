@@ -18,6 +18,12 @@ export async function comecarTreino(fichaId: string | null): Promise<void> {
   ir(`/treino/${sessao.id}`);
 }
 
+/** O treino começado e ainda não terminado (o mais recente, se houver mais de um). */
+export async function treinoEmAndamento(): Promise<Sessao | undefined> {
+  const abertos = await db.sessoes.filter((s) => !s.excluido && !s.finalizada_em).toArray();
+  return abertos.sort((a, b) => b.iniciada_em.localeCompare(a.iniciada_em))[0];
+}
+
 export async function terminarTreino(sessao: Sessao): Promise<void> {
   await salvar("sessoes", { ...sessao, finalizada_em: agora() });
   ir("/");

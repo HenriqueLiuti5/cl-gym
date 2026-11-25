@@ -8,7 +8,7 @@ import { lerPerfil, pesoAtual, type CamposPerfil, type DadosPerfil } from "../li
 import { dataLocal } from "../lib/regras";
 import { sincronizarEmBreve } from "../lib/sync";
 import type { RegistroDiario, Usuario } from "../lib/tipos";
-import { Aviso, Botao, Campo, estiloEntrada } from "./ui";
+import { Aviso, Botao, estiloEntradaLinha, Grupo, LinhaCampo } from "./ui";
 
 const texto = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
 
@@ -22,7 +22,7 @@ async function salvarPerfil(usuario: Usuario, dados: DadosPerfil, pesoAnterior: 
     const id = idRegistroDiario(usuario.id, data);
     const doDia = await db.registros_diarios.get(id);
     await salvar("registros_diarios", {
-      ...(doDia ?? { id, data, kcal: null, proteina_g: null, observacao: null }),
+      ...(doDia ?? { id, data, kcal: null, proteina_g: null, carbo_g: null, agua_ml: null, observacao: null }),
       atualizado_em: agora(),
       excluido: false,
       peso_kg: dados.peso_kg,
@@ -40,11 +40,13 @@ export function FormularioPerfil({
   usuario,
   registros,
   rotulo,
+  titulo,
   depois,
 }: {
   usuario: Usuario;
   registros: RegistroDiario[];
   rotulo: string;
+  titulo?: string;
   /** Primeiro acesso: sem internet, deixa seguir e preencher depois. */
   depois?: () => void;
 }) {
@@ -87,29 +89,34 @@ export function FormularioPerfil({
   }
 
   return (
-    <div className="space-y-3">
-      <Campo rotulo="Nome">
-        <input className={estiloEntrada} value={campos.nome} onChange={mudar("nome")} maxLength={200} autoComplete="name" />
-      </Campo>
-      <div className="grid grid-cols-3 gap-2">
-        <Campo rotulo="Peso (kg)">
-          <input className={estiloEntrada} inputMode="decimal" value={campos.peso} onChange={mudar("peso")} placeholder="78,4" />
-        </Campo>
-        <Campo rotulo="Altura (cm)">
-          <input className={estiloEntrada} inputMode="decimal" value={campos.altura} onChange={mudar("altura")} placeholder="175" />
-        </Campo>
-        <Campo rotulo="Idade">
-          <input className={estiloEntrada} inputMode="numeric" value={campos.idade} onChange={mudar("idade")} placeholder="28" />
-        </Campo>
-      </div>
-      {atual && (
-        <p className="text-xs text-slate-500">
-          Último peso lançado em {formatarData(atual.data)}. Um peso novo entra no registro de hoje.
-        </p>
-      )}
+    <div className="space-y-4">
+      <Grupo
+        titulo={titulo}
+        rodape={atual ? `Último peso lançado em ${formatarData(atual.data)}. Um peso novo entra no registro de hoje.` : undefined}
+      >
+        <LinhaCampo rotulo="Nome">
+          <input
+            className={`${estiloEntradaLinha} w-44`}
+            value={campos.nome}
+            onChange={mudar("nome")}
+            maxLength={200}
+            autoComplete="name"
+            placeholder="Seu nome"
+          />
+        </LinhaCampo>
+        <LinhaCampo rotulo="Peso" unidade="kg">
+          <input className={`${estiloEntradaLinha} w-24`} inputMode="decimal" value={campos.peso} onChange={mudar("peso")} placeholder="78,4" />
+        </LinhaCampo>
+        <LinhaCampo rotulo="Altura" unidade="cm">
+          <input className={`${estiloEntradaLinha} w-24`} inputMode="decimal" value={campos.altura} onChange={mudar("altura")} placeholder="175" />
+        </LinhaCampo>
+        <LinhaCampo rotulo="Idade" unidade="anos">
+          <input className={`${estiloEntradaLinha} w-24`} inputMode="numeric" value={campos.idade} onChange={mudar("idade")} placeholder="28" />
+        </LinhaCampo>
+      </Grupo>
       {erro && <Aviso tipo="ruim">{erro}</Aviso>}
       <Botao variante="principal" className="w-full" disabled={situacao === "salvando"} onClick={gravar}>
-        {situacao === "salvo" ? "Salvo ✓" : situacao === "salvando" ? "Salvando…" : rotulo}
+        {situacao === "salvo" ? "Salvo" : situacao === "salvando" ? "Salvando…" : rotulo}
       </Botao>
       {semInternet && depois && (
         <Botao variante="fantasma" className="w-full" onClick={depois}>

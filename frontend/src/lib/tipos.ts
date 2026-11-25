@@ -58,7 +58,23 @@ export interface RegistroDiario extends Sincronizavel {
   peso_kg: number | null;
   kcal: number | null;
   proteina_g: number | null;
+  /** Os dois abaixo faltam nos registros gravados antes de existirem: trate como null. */
+  carbo_g?: number | null;
+  agua_ml?: number | null;
   observacao: string | null;
+}
+
+/** Peso e carga são destinos (o app comemora ao chegar); os outros valem por dia ou semana. */
+export type TipoMeta = "peso" | "carga" | "kcal" | "proteina" | "carbo" | "agua" | "treinos_semana";
+
+export interface Meta extends Sincronizavel {
+  tipo: TipoMeta;
+  /** Só nas metas de carga. */
+  exercicio_id: string | null;
+  /** kg (peso, carga), kcal, g (proteína, carbo), ml (água) ou treinos por semana. */
+  valor: number;
+  /** De onde a pessoa partiu (peso ou recorde quando definiu a meta): sentido e progresso. */
+  inicio: number | null;
 }
 
 export interface Usuario {
@@ -68,9 +84,6 @@ export interface Usuario {
   criado_em: string;
   altura_cm: number | null;
   idade: number | null;
-  meta_kcal: number | null;
-  meta_proteina_g: number | null;
-  meta_peso_kg: number | null;
 }
 
 export const TABELAS = [
@@ -80,6 +93,7 @@ export const TABELAS = [
   "sessoes",
   "series",
   "registros_diarios",
+  "metas",
 ] as const;
 
 export type NomeTabela = (typeof TABELAS)[number];
@@ -91,4 +105,5 @@ export interface Registros {
   sessoes: Sessao;
   series: Serie;
   registros_diarios: RegistroDiario;
+  metas: Meta;
 }

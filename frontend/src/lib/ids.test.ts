@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { idRegistroDiario, novoId, uuid5 } from "./ids";
+import { idMeta, idRegistroDiario, novoId, uuid5 } from "./ids";
 
 describe("ids", () => {
   it("gera UUID v4", () => {
@@ -17,8 +17,19 @@ describe("ids", () => {
 
   it("registro do dia tem id fixo por usuário e data", () => {
     const a = idRegistroDiario("u1", "2026-11-24");
-    expect(idRegistroDiario("u1", "2026-11-24")).toBe(a);
+    // O mesmo do backend/dados_dev.py (o gerador de dados de dev grava com este id).
+    expect(a).toBe("bff7dca1-fadb-5b35-8ab5-cd794d39e2de");
     expect(idRegistroDiario("u2", "2026-11-24")).not.toBe(a);
     expect(idRegistroDiario("u1", "2026-11-25")).not.toBe(a);
+  });
+
+  it("meta tem id fixo por usuário, tipo e exercício", () => {
+    const usuario = "0d7d4f9c-472a-4926-aa6a-4ad9e3cfe362";
+    // Os mesmos de backend/tests/test_dados_dev.py.
+    expect(idMeta(usuario, "peso")).toBe("63e95567-4fcc-5bf3-b613-806376b5fca2");
+    expect(idMeta(usuario, "carga", "6f1d0c8e-0000-4000-8000-000000000001")).toBe(
+      "129cada6-ec8e-5515-9e39-753529b74894",
+    );
+    expect(idMeta(usuario, "carga", "outro")).not.toBe(idMeta(usuario, "carga", "6f1d0c8e-0000-4000-8000-000000000001"));
   });
 });

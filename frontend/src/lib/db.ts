@@ -4,6 +4,7 @@ import type {
   Exercicio,
   Ficha,
   FichaExercicio,
+  Meta,
   NomeTabela,
   Registros,
   RegistroDiario,
@@ -11,7 +12,8 @@ import type {
   Sessao,
 } from "./tipos";
 
-interface Meta {
+/** Chave e valor guardados só no aparelho (usuário, cursor, estado da sincronização...). */
+interface Metadado {
   chave: string;
   valor: unknown;
 }
@@ -24,7 +26,8 @@ export const db = new Dexie("cl-gym") as Dexie & {
   sessoes: EntityTable<Sessao, "id">;
   series: EntityTable<Serie, "id">;
   registros_diarios: EntityTable<RegistroDiario, "id">;
-  meta: EntityTable<Meta, "chave">;
+  metas: EntityTable<Meta, "id">;
+  meta: EntityTable<Metadado, "chave">;
 };
 
 db.version(1).stores({
@@ -36,6 +39,12 @@ db.version(1).stores({
   registros_diarios: "id, data, pendente",
   meta: "chave",
 });
+
+// Versão 2: metas sincronizáveis. Zera o cursor para baixar tudo de novo: o que o servidor já
+// tinha numa tabela que este aparelho ainda não conhecia ficaria para trás.
+db.version(2)
+  .stores({ metas: "id, pendente" })
+  .upgrade((tx) => tx.table("meta").delete("cursor"));
 
 export function tabela<T extends NomeTabela>(nome: T): EntityTable<Registros[T], "id"> {
   return db[nome] as unknown as EntityTable<Registros[T], "id">;

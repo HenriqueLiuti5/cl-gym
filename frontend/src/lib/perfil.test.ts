@@ -10,9 +10,6 @@ const usuario = (campos: Partial<Usuario> = {}): Usuario => ({
   criado_em: "2026-11-01T00:00:00Z",
   altura_cm: 165,
   idade: 29,
-  meta_kcal: null,
-  meta_proteina_g: null,
-  meta_peso_kg: null,
   ...campos,
 });
 

@@ -1,20 +1,160 @@
 @import "tailwindcss";
 
-html {
-  -webkit-tap-highlight-color: transparent;
+/*
+ * Cores do app. As classes são sempre as mesmas (bg-superficie, text-texto-2...); o tema escuro,
+ * logo abaixo, troca só os valores e segue o que estiver escolhido no celular.
+ * Contraste conferido: todo texto passa de 4,5:1 na superfície em que aparece, nos dois temas.
+ * As cores padrão do Tailwind (slate, emerald...) estão desligadas de propósito.
+ */
+@theme static {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-fundo: #f2f2f2;
+  --color-superficie: #ffffff;
+  /* Campos e botões secundários. */
+  --color-campo: #eeeef0;
+  /* Opção escolhida no seletor de segmentos. */
+  --color-segmento: #ffffff;
+  --color-linha: #e2e2e5;
+  --color-borda: #c8c8cd;
+
+  --color-texto: #111113;
+  --color-texto-2: #5c5c61;
+  --color-texto-3: #6b6b70;
+
+  /* Acento: links, aba ativa, botão principal. "forte" é o fundo de botão com texto branco. */
+  --color-acento: #1a5fcc;
+  --color-acento-forte: #1a5fcc;
+  --color-acento-suave: #e7eefb;
+  --color-sucesso: #1d7a35;
+  --color-sucesso-forte: #1d7a35;
+  --color-sucesso-suave: #e5f3e8;
+  --color-aviso: #8a5300;
+  --color-aviso-suave: #fbefd9;
+  --color-perigo: #c42b2b;
+  --color-perigo-forte: #c42b2b;
+  --color-perigo-suave: #fbe8e8;
+
+  /* Gráficos: uma cor por assunto, a mesma em todos. Paleta validada (contraste e daltonismo)
+     sobre o branco e, no tema escuro, sobre #1c1c1e. Peso, carbo e proteína ficam abaixo de 3:1
+     no branco: por isso todo gráfico tem a tabela "Ver os números". */
+  --color-g-treino: #6250d6;
+  --color-g-peso: #1baf7a;
+  --color-g-kcal: #eb6834;
+  --color-g-proteina: #e87ba4;
+  --color-g-carbo: #eda100;
+  --color-g-agua: #2a78d6;
+  --color-g-desceu: #2a78d6;
+  --color-g-subiu: #e34948;
+  --color-g-alcancada: #0ca30c;
+  --color-g-contexto: #aeaeb2;
+  --color-g-grade: #ececee;
+  --color-g-eixo: #6b6b70;
+  --color-g-base: #c7c7cc;
+  --color-g-vazio: #ebebed;
+  --color-g-cursor: rgb(0 0 0 / 0.05);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  overscroll-behavior-y: none;
+:root {
+  color-scheme: light;
 }
 
-/* Campos numéricos sem as setinhas, que atrapalham no celular. */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-fundo: #0c0c0d;
+    --color-superficie: #1c1c1e;
+    --color-campo: #2c2c2e;
+    --color-segmento: #58585d;
+    --color-linha: #313134;
+    --color-borda: #48484a;
+
+    --color-texto: #f2f2f2;
+    --color-texto-2: #a3a3a8;
+    --color-texto-3: #939398;
+
+    --color-acento: #5b9cff;
+    --color-acento-forte: #2a67d6;
+    --color-acento-suave: #172742;
+    --color-sucesso: #4cc26b;
+    --color-sucesso-forte: #23843f;
+    --color-sucesso-suave: #14291b;
+    --color-aviso: #f2b34c;
+    --color-aviso-suave: #33270f;
+    --color-perigo: #ff6961;
+    --color-perigo-forte: #c93a33;
+    --color-perigo-suave: #3b1716;
+
+    --color-g-treino: #9085e9;
+    --color-g-peso: #199e70;
+    --color-g-kcal: #d95926;
+    --color-g-proteina: #d55181;
+    --color-g-carbo: #c98500;
+    --color-g-agua: #3987e5;
+    --color-g-desceu: #3987e5;
+    --color-g-subiu: #e66767;
+    --color-g-alcancada: #0ca30c;
+    --color-g-contexto: #636366;
+    --color-g-grade: #2c2c2e;
+    --color-g-eixo: #8e8e93;
+    --color-g-base: #48484a;
+    --color-g-vazio: #2c2c2e;
+    --color-g-cursor: rgb(255 255 255 / 0.07);
+  }
 }
-input[type="number"] {
-  -moz-appearance: textfield;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-fundo);
+    color: var(--color-texto);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+  }
+
+  /* Campos numéricos sem as setinhas, que atrapalham no celular. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /* Lista agrupada: linhas separadas por um fio que começa depois da margem esquerda. */
+  .lista > * + * {
+    position: relative;
+  }
+  .lista > * + *::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    right: 0;
+    height: 1px;
+    background: var(--color-linha);
+  }
 }

@@ -19,8 +19,9 @@ export default defineConfig({
         start_url: "/",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#0f172a",
-        theme_color: "#0f172a",
+        // Cor da tela de abertura no Android (o index.html define a barra de status por tema).
+        background_color: "#f2f2f2",
+        theme_color: "#f2f2f2",
         icons: [
           { src: "icone-192.png", sizes: "192x192", type: "image/png" },
           { src: "icone-512.png", sizes: "512x512", type: "image/png" },

@@ -2,7 +2,6 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect } from "react";
 
 import { FormularioPerfil } from "../componentes/FormularioPerfil";
-import { Cartao } from "../componentes/ui";
 import { api } from "../lib/api";
 import { db, gravarMeta } from "../lib/db";
 import { perfilIncompleto } from "../lib/perfil";
@@ -21,17 +20,14 @@ export function BoasVindas({ usuario, depois }: { usuario: Usuario; depois: () =
 
   if (!registros) return null;
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10">
-      <div className="text-center">
-        <img src="/icone.svg" alt="" className="mx-auto mb-4 h-16 w-16" />
-        <h1 className="text-2xl font-bold">Boas-vindas ao CL Gym</h1>
-        <p className="mt-2 text-slate-400">
-          Antes de começar, conte um pouco sobre você. Dá para mudar depois, na aba Conta.
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
+      <div className="mb-6 px-1">
+        <h1 className="text-[28px] leading-tight font-bold">Boas-vindas</h1>
+        <p className="mt-1.5 text-[17px] leading-snug text-texto-2">
+          Antes de começar, preencha seus dados. Dá para mudar depois, na aba Conta.
         </p>
       </div>
-      <Cartao>
-        <FormularioPerfil usuario={usuario} registros={registros} rotulo="Começar" depois={depois} />
-      </Cartao>
+      <FormularioPerfil usuario={usuario} registros={registros} rotulo="Começar" depois={depois} />
     </main>
   );
 }

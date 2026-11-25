@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Aviso, Botao, Campo, Cartao, estiloEntrada } from "../componentes/ui";
+import { Aviso, Botao, Campo, estiloEntrada } from "../componentes/ui";
 import { ErroApi } from "../lib/api";
 import { configLogin, entrarComGoogle, entrarDev, type ConfigLogin } from "../lib/sessao";
 
@@ -61,13 +61,15 @@ export function Login({ expirou }: { expirou: boolean }) {
               .finally(() => setCarregando(false));
           },
         });
+        const escuro = window.matchMedia("(prefers-color-scheme: dark)").matches;
         google.renderButton(alvo, {
-          theme: "filled_black",
+          theme: escuro ? "filled_black" : "outline",
           size: "large",
-          shape: "pill",
+          shape: "rectangular",
           text: "continue_with",
           locale: "pt-BR",
-          width: 280,
+          // O botão do Google aceita de 200 a 400 px: ocupa a largura da coluna.
+          width: Math.min(400, Math.max(200, alvo.offsetWidth)),
         });
       })
       .catch(() => setErro("Não deu para carregar o login do Google. Confira a internet."));
@@ -86,25 +88,25 @@ export function Login({ expirou }: { expirou: boolean }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-5 py-10">
-      <div className="text-center">
-        <img src="/icone.svg" alt="" className="mx-auto mb-4 h-20 w-20" />
-        <h1 className="text-3xl font-bold">CL Gym</h1>
-        <p className="mt-2 text-slate-400">Seus treinos e cargas, mesmo sem internet.</p>
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
+      <div className="mb-10">
+        <img src="/icone.svg" alt="" className="mb-5 h-16 w-16 rounded-[18px]" />
+        <h1 className="text-[32px] leading-tight font-bold">CL Gym</h1>
+        <p className="mt-2 text-[17px] leading-snug text-texto-2">Treinos, cargas, peso e alimentação. Funciona mesmo sem internet.</p>
       </div>
 
-      {expirou && <Aviso tipo="info">Sua sessão acabou. Entre de novo; nada do que está no celular se perdeu.</Aviso>}
-      {erro && <Aviso tipo="ruim">{erro}</Aviso>}
-
-      <Cartao className="flex flex-col items-center gap-3">
-        <p className="text-center text-sm text-slate-400">Só entra quem foi convidado.</p>
-        <div ref={botaoGoogle} className="min-h-11" />
-        {carregando && <p className="text-sm text-slate-400">Entrando…</p>}
-      </Cartao>
+      <div className="space-y-3">
+        {expirou && <Aviso tipo="info">Sua sessão acabou. Entre de novo; nada do que está no celular se perdeu.</Aviso>}
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+        <div ref={botaoGoogle} className="min-h-11 w-full" />
+        <p className="text-[13px] text-texto-3">{carregando ? "Entrando…" : "Só entra quem foi convidado."}</p>
+      </div>
 
       {config?.login_dev && (
-        <Cartao className="space-y-3 border border-dashed border-amber-700">
-          <p className="text-sm text-amber-300">Login de desenvolvimento (só no computador, nunca em produção).</p>
+        <section className="mt-10 space-y-3 rounded-xl border border-dashed border-borda p-4">
+          <p className="text-[13px] text-texto-2">
+            <strong className="font-semibold text-texto">Login de desenvolvimento.</strong> Só no computador, nunca em produção.
+          </p>
           <Campo rotulo="E-mail convidado">
             <input
               className={estiloEntrada}
@@ -114,10 +116,10 @@ export function Login({ expirou }: { expirou: boolean }) {
               placeholder="voce@gmail.com"
             />
           </Campo>
-          <Botao variante="principal" className="w-full" disabled={!emailDev || carregando} onClick={entrarComoDev}>
+          <Botao className="w-full" disabled={!emailDev || carregando} onClick={entrarComoDev}>
             Entrar como dev
           </Botao>
-        </Cartao>
+        </section>
       )}
     </main>
   );
