@@ -10,7 +10,7 @@ export default defineConfig({
     VitePWA({
       // O service worker novo entra sozinho na próxima abertura com internet.
       registerType: "autoUpdate",
-      includeAssets: ["apple-touch-icon.png"],
+      includeAssets: ["apple-touch-icon.png", "logo-1024.png"],
       manifest: {
         name: "CL Gym",
         short_name: "CL Gym",

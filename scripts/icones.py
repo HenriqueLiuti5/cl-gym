@@ -8,10 +8,11 @@
 
 Saem em `frontend/public/`:
 
-- `icone-192.png` e `icone-512.png`: ícone comum (manifest, favicon e tela de login);
+- `icone-192.png` e `icone-512.png`: ícone comum (manifest e favicon);
 - `icone-maskable-512.png`: o Android corta em círculo, gota ou quadrado, então o desenho fica
   dentro da área segura (círculo de 80% do lado);
-- `apple-touch-icon.png` (180 px): ícone da tela de início no iPhone.
+- `apple-touch-icon.png` (180 px): ícone da tela de início no iPhone;
+- `logo-1024.png`: o emblema grande, sobre o topo preto da tela de login.
 
 O emblema é centralizado pelo que aparece (o fundo é preto) e não pela imagem original, que tem
 mais sobra embaixo do que em cima. Pode rodar de novo quando a logo mudar.
@@ -29,7 +30,9 @@ SAIDA = RAIZ / "frontend" / "public"
 # Abaixo disso o pixel conta como fundo (o brilho em volta do emblema some no ícone pequeno).
 LIMIAR_FUNDO = 12
 # Ícone comum: o emblema ocupa 86% do lado. Maskable: cabe no círculo da área segura (80% do lado).
+# Login: quase sem margem, porque o topo preto da tela já dá o respiro.
 OCUPACAO_COMUM = 0.86
+OCUPACAO_LOGIN = 0.94
 DIAMETRO_MASKABLE = 0.80
 
 
@@ -57,14 +60,14 @@ def raio_do_desenho(emblema: Image.Image) -> float:
     return raio * escala
 
 
-def montar(emblema: Image.Image, lado: int, escala: float) -> Image.Image:
+def montar(emblema: Image.Image, lado: int, escala: float, modo: str = "RGB") -> Image.Image:
     """Põe o emblema, redimensionado por `escala`, no centro de um quadrado preto de `lado` px."""
     largura = max(1, round(emblema.width * escala))
     altura = max(1, round(emblema.height * escala))
     reduzido = emblema.resize((largura, altura), Image.Resampling.LANCZOS)
     fundo = Image.new("L", (lado, lado), 0)
     fundo.paste(reduzido, ((lado - largura) // 2, (lado - altura) // 2))
-    return fundo.convert("RGB")
+    return fundo.convert(modo)
 
 
 def main() -> None:
@@ -84,6 +87,8 @@ def main() -> None:
         "icone-512.png": comum(512),
         "apple-touch-icon.png": comum(180),
         "icone-maskable-512.png": montar(emblema, 512, 512 * DIAMETRO_MASKABLE / 2 / raio),
+        # Só aparece no navegador: em tons de cinza, que fica com metade do tamanho.
+        "logo-1024.png": montar(emblema, 1024, 1024 * OCUPACAO_LOGIN / maior_lado, "L"),
     }
     for nome, imagem in icones.items():
         destino = SAIDA / nome

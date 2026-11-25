@@ -266,7 +266,7 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
   `frontend/marca/logo.png`, a imagem do Henrique ampliada e limpa. É a única exceção à regra de
   brilho e gradiente: não redesenhar nem colorir. Os PNGs de `public/` saem dela com
   `uv run scripts/icones.py`, em fundo preto e quadrado inteiro (o sistema aplica a máscara); no
-  maskable o desenho fica dentro da área segura. A tela de login mostra o `icone-512.png`.
+  maskable o desenho fica dentro da área segura. A tela de login mostra o `logo-1024.png` sobre um topo preto.
 
 ## Catálogo (seed)
 
