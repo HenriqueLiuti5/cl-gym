@@ -12,7 +12,7 @@ export function Admin({ usuario, aba }: { usuario: Usuario; aba?: string }) {
   return (
     <div>
       <BarraTopo titulo="Administração" voltar="#/conta" />
-      <div className="mb-3">
+      <div data-fixo-na-troca="segmentos" className="mb-3">
         <Segmentos opcoes={PARTES_ADMIN} escolhido={atual} link={(id) => `#/admin/${id}`} rotulo="Partes da administração" />
       </div>
       {/* Só esta parte desliza ao trocar entre Usuários e Convites (Palco.tsx). */}

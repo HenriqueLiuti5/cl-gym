@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chaveDaRota, comResistencia, deveTrocar, mesmaTela, sentidoDaTransicao, telaVizinha } from "./navegacao";
+import { chaveDaRota, comResistencia, deveTrocar, duracaoDoArrasto, mesmaTela, sentidoDaTransicao, telaVizinha } from "./navegacao";
 
 const rota = (hash: string) => hash.split("/").filter(Boolean);
 
@@ -91,5 +91,17 @@ describe("comResistencia", () => {
   it("anda menos que o dedo", () => {
     expect(comResistencia(100)).toBe(25);
     expect(comResistencia(-40)).toBe(-10);
+  });
+});
+
+describe("duracaoDoArrasto", () => {
+  it("acompanha a velocidade do dedo", () => {
+    expect(duracaoDoArrasto(230, -1.5)).toBe(276);
+  });
+
+  it("fica entre 180 e 320 ms", () => {
+    expect(duracaoDoArrasto(230, 6)).toBe(180);
+    expect(duracaoDoArrasto(230, 0.1)).toBe(320);
+    expect(duracaoDoArrasto(230, 0)).toBe(320);
   });
 });

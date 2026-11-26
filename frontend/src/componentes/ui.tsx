@@ -49,7 +49,8 @@ export function Titulo({ children, subtitulo }: { children: ReactNode; subtitulo
 /** Barra fixa no topo das telas internas (ficha, treino): voltar, título e uma ação. */
 export function BarraTopo({ titulo, voltar, acao }: { titulo: ReactNode; voltar: string; acao?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-20 -mx-4 mb-4 flex h-12 items-center gap-1 border-b border-linha bg-fundo px-2">
+    // data-fixo-na-troca: fica parada ao trocar de parte na mesma tela (administração).
+    <header data-fixo-na-troca="barra" className="sticky top-0 z-20 -mx-4 mb-4 flex h-12 items-center gap-1 border-b border-linha bg-fundo px-2">
       {/* data-voltar: arrastar da borda esquerda vai para cá (componentes/Palco.tsx). */}
       <a href={voltar} data-voltar className="grid h-11 w-10 shrink-0 place-items-center rounded-lg text-acento active:bg-campo" aria-label="Voltar">
         <Icone nome="voltar" className="h-6 w-6" />

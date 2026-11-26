@@ -60,7 +60,10 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
   hand-drawn SVG icons and no emojis. Light and dark themes follow the phone, every text color
   passes 4.5:1 contrast in both, and the chart colors were checked for color blindness.
 - **Gestures:** swiping sideways moves between tabs (and between the sections of the progress
-  and admin screens), with the screen following the finger. Swipes do not start on charts, where
+  and admin screens), with the screen following the finger. On release, both screens move
+  together like pages at the finger's speed, using the View Transitions API (the browser animates
+  snapshots of both screens off the main thread), with a plain animation where it is missing.
+  Swipes do not start on charts, where
   dragging shows the values, or on fields and dialogs, and they never turn into a tap. In the
   installed app, swiping from the left edge goes back, which the iPhone does not offer to
   installed web apps. Screens slide in from the matching side, and "reduce motion" turns the

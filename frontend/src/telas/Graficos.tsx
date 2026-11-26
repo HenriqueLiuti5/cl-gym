@@ -72,8 +72,11 @@ export function Graficos({ usuario, aba }: { usuario: Usuario; aba?: string }) {
 
   return (
     <div>
-      <Titulo>Evolução</Titulo>
-      <nav className="sticky top-0 z-20 -mx-4 -mt-1 bg-fundo px-4 pt-1 pb-3" aria-label="Partes da evolução">
+      {/* data-fixo-na-troca: o título e os segmentos ficam parados ao trocar de parte (Palco.tsx). */}
+      <div data-fixo-na-troca="titulo">
+        <Titulo>Evolução</Titulo>
+      </div>
+      <nav data-fixo-na-troca="segmentos" className="sticky top-0 z-20 -mx-4 -mt-1 bg-fundo px-4 pt-1 pb-3" aria-label="Partes da evolução">
         <Segmentos opcoes={ABAS} escolhido={atual} link={(id) => `#/graficos/${id}`} rotulo="Partes da evolução" />
       </nav>
 

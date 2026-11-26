@@ -49,7 +49,7 @@ function Lista({
         onChange={(e) => setBusca(e.target.value)}
         aria-label="Buscar exercício"
       />
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Grupo muscular">
+      <div className="sem-barra-de-rolagem -mx-5 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Grupo muscular">
         {[null, ...grupos].map((g) => (
           <button
             key={g ?? "todos"}
@@ -136,7 +136,7 @@ export function SeletorExercicio({
         </span>
       </button>
       {atalhos.length > 1 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Mais feitos">
+        <div className="sem-barra-de-rolagem -mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Mais feitos">
           {atalhos.map((r) => (
             <button
               key={r.exercicio.id}

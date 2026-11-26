@@ -32,8 +32,9 @@ const ABAS: { caminho: string; rotulo: string; icone: NomeIcone }[] = [
 
 function Navegacao({ atual }: { atual: string }) {
   return (
-    // data-sem-arrasto: arrastar na barra de abas não troca de tela (só tocar).
-    <nav data-sem-arrasto className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
+    // data-sem-arrasto: arrastar na barra de abas não troca de tela (só tocar). data-abas: ela fica
+    // parada enquanto a tela troca (index.css, "Troca de tela").
+    <nav data-sem-arrasto data-abas className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie pb-[env(safe-area-inset-bottom)]">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {ABAS.map((aba) => {
           const ativa =

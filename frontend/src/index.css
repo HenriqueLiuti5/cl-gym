@@ -172,3 +172,96 @@
     background: var(--color-linha);
   }
 }
+
+/* Lista que rola para o lado, sem a barra de rolagem (o item cortado na beira já mostra que há mais). */
+@utility sem-barra-de-rolagem {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * Troca de tela (componentes/Palco.tsx), com a View Transitions API: o navegador fotografa a tela
+ * de antes e a de depois e anima as duas fotos. "arrasto": as duas andam juntas o que falta, como
+ * páginas, começando na velocidade do dedo e freando. "toque" (aba, link, voltar): a tela sai um
+ * quarto para o lado e apaga, e a nova vem do outro lado acendendo. As distâncias e a duração vêm
+ * do Palco, nas variáveis --troca-*.
+ */
+@keyframes troca-sai {
+  to {
+    transform: translateX(var(--troca-sai));
+  }
+}
+@keyframes troca-entra {
+  from {
+    transform: translateX(var(--troca-entra));
+  }
+}
+@keyframes troca-sai-apagando {
+  to {
+    transform: translateX(var(--troca-sai));
+    opacity: 0;
+  }
+}
+@keyframes troca-entra-acendendo {
+  from {
+    transform: translateX(var(--troca-entra));
+    opacity: 0;
+  }
+}
+
+:root[data-troca]::view-transition-old(root),
+:root[data-troca]::view-transition-new(root) {
+  /* Sem a mistura padrão (plus-lighter), que clareia onde as duas fotos se cruzam. */
+  mix-blend-mode: normal;
+  animation-duration: var(--troca-duracao);
+  animation-fill-mode: both;
+}
+:root[data-troca="arrasto"]::view-transition-old(root) {
+  animation-name: troca-sai;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+:root[data-troca="arrasto"]::view-transition-new(root) {
+  animation-name: troca-entra;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+:root[data-troca="toque"]::view-transition-old(root) {
+  animation-name: troca-sai-apagando;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-troca="toque"]::view-transition-new(root) {
+  animation-name: troca-entra-acendendo;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Fica parado na troca: a barra de abas sempre e, numa troca de parte (Evolução, administração),
+   o topo da tela (título, segmentos, barra com o voltar). Só o miolo anda. */
+[data-abas] {
+  view-transition-name: abas;
+}
+:root.troca-de-parte [data-fixo-na-troca="titulo"] {
+  view-transition-name: fixo-titulo;
+}
+:root.troca-de-parte [data-fixo-na-troca="segmentos"] {
+  view-transition-name: fixo-segmentos;
+}
+:root.troca-de-parte [data-fixo-na-troca="barra"] {
+  view-transition-name: fixo-barra;
+}
+::view-transition-group(abas),
+::view-transition-group(fixo-titulo),
+::view-transition-group(fixo-segmentos),
+::view-transition-group(fixo-barra),
+::view-transition-new(abas),
+::view-transition-new(fixo-titulo),
+::view-transition-new(fixo-segmentos),
+::view-transition-new(fixo-barra) {
+  animation: none;
+}
+::view-transition-old(abas),
+::view-transition-old(fixo-titulo),
+::view-transition-old(fixo-segmentos),
+::view-transition-old(fixo-barra) {
+  display: none;
+}

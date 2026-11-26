@@ -293,7 +293,15 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
   instalado, arrastar da borda esquerda numa tela interna volta (vai para o link `data-voltar` da
   `BarraTopo`), porque o iPhone instalado não tem esse gesto. Toda troca de tela desliza do lado
   certo, e "reduzir movimento" desliga as animações. Ordem em `lib/navegacao.ts`, gesto em
-  `componentes/Palco.tsx`.
+  `componentes/Palco.tsx`, animações no `index.css` ("Troca de tela").
+- **Troca de tela suave** (pedido em 25/11/2026): ao soltar o arrasto, a tela e a nova andam
+  juntas o que falta, como páginas, na velocidade do dedo, sem o pulo da folga no começo.
+  Usa a View Transitions API: o navegador fotografa a tela de antes e a de depois e anima as
+  duas fotos fora da thread principal. Por isso a rota troca de forma síncrona (`flushSync`, em
+  `lib/rota.ts`), e o Palco espera os dados do IndexedDB chegarem antes da foto. A barra de abas
+  (`data-abas`) fica parada e, na troca de parte, também o topo (`data-fixo-na-troca`). Onde a
+  API não existe (iPhone antes do iOS 18), a tela sai e a nova entra com animações comuns.
+  Listas que rolam para o lado não mostram a barra de rolagem (`sem-barra-de-rolagem`).
 - **Barra de navegação do Android** (25/11/2026): o manifest **não tem `theme_color`** (no
   `vite.config.ts` ele é `undefined`; apagar a linha faz o plugin pôr o verde padrão dele). Com
   ele, o Chrome 156+ pinta a barra de baixo do app instalado com essa cor fixa, e no tema escuro

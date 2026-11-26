@@ -85,3 +85,14 @@ export function deveTrocar(deslocamento: number, largura: number, velocidade: nu
 export function comResistencia(deslocamento: number): number {
   return deslocamento / 4;
 }
+
+/**
+ * Quanto dura o fim do arrasto depois de soltar o dedo: as duas telas andam juntas o que falta
+ * (`resto`, em px), começando mais ou menos na velocidade do dedo (px/ms) e freando. Entre 180 e
+ * 320 ms: rápido num movimento rápido, sem arrastar demais num lento.
+ */
+export function duracaoDoArrasto(resto: number, velocidade: number): number {
+  // A curva usada (ease-out) começa a cerca de 1,8 vez a velocidade média.
+  const ms = (1.8 * Math.abs(resto)) / Math.max(Math.abs(velocidade), 0.01);
+  return Math.round(Math.min(320, Math.max(180, ms)));
+}
