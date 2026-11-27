@@ -41,10 +41,26 @@ export async function cancelarTreino(sessao: Sessao): Promise<void> {
   sincronizarEmBreve();
 }
 
-export async function gravarSerie(serie: Omit<Serie, "atualizado_em" | "excluido" | "id"> & { id?: string }) {
-  await salvar("series", { ...serie, excluido: false, atualizado_em: agora(), id: serie.id ?? novoId() });
+/** Séries anotadas (não apagadas) do treino. */
+export async function seriesAnotadas(sessaoId: string): Promise<number> {
+  return db.series
+    .where("sessao_id")
+    .equals(sessaoId)
+    .filter((s) => !s.excluido)
+    .count();
 }
 
-export async function apagarSerie(serie: Serie): Promise<void> {
-  await salvar("series", { ...serie, excluido: true });
+// Gravar e apagar a série fazem o mesmo que o `salvar` (marcar como pendente), mas com a hora de
+// quem chama: a linha do treino grava a cada tecla e reconhece por essa hora o eco da própria
+// gravação (veja mudouPorFora em lib/linhaSerie.ts). Não sincronizam: as séries vão juntas no fim.
+
+/** Grava a série (cria ou regrava pelo id). */
+export async function gravarSerie(serie: Omit<Serie, "excluido" | "pendente" | "versao">): Promise<void> {
+  await db.series.put({ ...serie, excluido: false, pendente: 1 });
+}
+
+/** Apaga a série (exclusão lógica). Vale mesmo com a gravação dela ainda em curso: a mudança
+ * entra na fila do banco depois dela. */
+export async function apagarSerie(id: string, atualizadoEm: string = agora()): Promise<void> {
+  await db.series.update(id, { excluido: true, atualizado_em: atualizadoEm, pendente: 1 });
 }

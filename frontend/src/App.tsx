@@ -14,6 +14,7 @@ import { BoasVindas } from "./telas/BoasVindas";
 import { Conta } from "./telas/Conta";
 import { Convite } from "./telas/Convite";
 import { Dia } from "./telas/Dia";
+import { EditarFicha } from "./telas/EditarFicha";
 import { FichaTela } from "./telas/FichaTela";
 import { Inicio } from "./telas/Inicio";
 import { Login } from "./telas/Login";
@@ -39,7 +40,7 @@ function Navegacao({ atual }: { atual: string }) {
         {ABAS.map((aba) => {
           const ativa =
             aba.caminho === atual ||
-            (aba.caminho === "" && ["ficha", "treino"].includes(atual)) ||
+            (aba.caminho === "" && ["ficha", "treino", "editar"].includes(atual)) ||
             (aba.caminho === "conta" && atual === "admin");
           return (
             <li key={aba.caminho}>
@@ -106,7 +107,9 @@ export function App() {
   }
 
   let conteudo;
+  // #/editar/nova cria um treino; #/editar/<id> edita um que existe.
   if (tela === "ficha" && parametro) conteudo = <FichaTela fichaId={parametro} />;
+  else if (tela === "editar" && parametro) conteudo = <EditarFicha key={parametro} fichaId={parametro === "nova" ? null : parametro} />;
   else if (tela === "treino" && parametro) conteudo = <Treino sessaoId={parametro} />;
   else if (tela === "dia") conteudo = <Dia usuario={usuario} />;
   else if (tela === "graficos") conteudo = <Graficos usuario={usuario} aba={parametro} />;

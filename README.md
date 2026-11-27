@@ -26,21 +26,24 @@ Built with AI assistance (Claude Code), as described in [`CLAUDE.md`](CLAUDE.md)
 - **Sign in with Google**, invite-only. The admin generates a one-time invite in the app: a link
   plus an 8-character code (no look-alike characters), valid for 24 hours and for one person. The
   friend opens the link, types the code and signs in; the invite is consumed in the same
-  transaction that creates the account. Each person only ever sees their own data; on first
-  sign-in they get a copy of the template plans, which they can then edit.
+  transaction that creates the account. Each person only ever sees their own data. A new account
+  starts with no plans: the person builds their own or copies a ready-made template.
 - **Admin screen** (only for the `ADMIN_EMAIL` account): who uses the app and how (last seen,
   phone or computer, installed app or browser, workout counts), never anyone's weight, food or
   loads. The admin can block an account (reversible: the person is signed out on the next sync)
   or delete it for real, and manages the invites (share the link, copy the code, cancel).
 - **Install button before signing in:** the native install prompt on Android and desktop Chrome,
   or illustrated steps for the iPhone (Share, then "Add to Home Screen" in Safari).
-- **Plans** with one rep target per exercise (never a range), a warm-up flag on the first exercise,
-  supersets, and up to two alternatives per exercise ("Plan B"). Every exercise keeps its own load
-  history, including the alternatives.
-- **Logging a workout** works with no connection. Each exercise shows what was done last time, and
-  the app says "go up in weight" when the first set beat the target by 2 reps, or "too heavy" when a
-  set fell 2 reps short.
-- **Suggestion of the day:** the plan done longest ago, since workouts do not follow weekdays.
+- **Build your own plans** offline: pick exercises from a catalog of about 280, each with
+  public-domain demonstration photos and short how-to steps, searchable without accents and
+  grouped by muscle (or add your own exercise). Each exercise gets sets, one rep target (never a
+  range), an optional warm-up and up to two alternatives ("Plan B"), pre-filled from the catalog's
+  similar exercises. Ready-made templates can be copied and then edited.
+- **Logging a workout** works with no connection. A set is saved as soon as the reps are typed,
+  with no confirm button. Each exercise shows what was done last time, and the app says "go up in
+  weight" when the first set beat the target by 2 reps, or "too heavy" when a set fell 2 reps
+  short. "Swap" switches to the Plan B or a similar exercise when a machine is busy; every
+  exercise keeps its own load history.
 - **Daily log:** fasting weight, calories, protein, carbs, water (with one-tap +250 ml buttons) and
   a note.
 - **Progress screen** in four tabs (training, body, nutrition, fun facts): load per exercise with
@@ -144,9 +147,10 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ## Status
 
 - [x] Multi-user backend: Google sign-in, invites, per-user sync, profile and account deletion
-- [x] Training model: rep targets, warm-up, supersets, Plan B, daily log and goals
-- [x] Template plans and exercise images (public-domain
-  [free-exercise-db](https://github.com/yuhonas/free-exercise-db))
+- [x] Training model: rep targets, warm-up, Plan B, daily log and goals
+- [x] Template plans and an exercise catalog of about 280 exercises with images and similar
+  exercises (public-domain [free-exercise-db](https://github.com/yuhonas/free-exercise-db))
+- [x] Custom plans: build, edit and delete them in the app; new accounts start empty
 - [x] Offline-first PWA
 - [x] Progress screen with goals, fun facts, carbs and water
 - [x] Redesign: plain phone-native look, light and dark themes, no emojis

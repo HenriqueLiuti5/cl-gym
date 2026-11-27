@@ -176,9 +176,9 @@ class Gerador:
         sessoes_novas: set[uuid.UUID] = set()
         series_novas: set[uuid.UUID] = set()
         for n, dia in enumerate(self._dias_de_treino()):
-            # Quase sempre a ficha feita há mais tempo (a sugestão do app), às vezes outra.
-            por_sugestao = sorted(fichas, key=lambda f: (ultima.get(f.id, date.min), f.ordem))
-            ficha = por_sugestao[0] if self.rng.random() < 0.8 else self.rng.choice(fichas)
+            # Quase sempre a ficha feita há mais tempo (o rodízio da divisão), às vezes outra.
+            por_rodizio = sorted(fichas, key=lambda f: (ultima.get(f.id, date.min), f.ordem))
+            ficha = por_rodizio[0] if self.rng.random() < 0.8 else self.rng.choice(fichas)
             ultima[ficha.id] = dia
             comeco, fim = self._horario(dia, ficha)
             sessao_id = id_gerado(u, "sessao", n)
@@ -408,6 +408,7 @@ def gerar(session: Session, email: str, semanas: int = 20, semente: int = 7) -> 
     usuario.nome = usuario.nome or "Dev"
     usuario.altura_cm = usuario.altura_cm or 178
     usuario.idade = usuario.idade or 28
+    # A conta nova começa sem fichas; os treinos inventados seguem as fichas modelo.
     copiar_fichas_modelo(session, usuario.id)
 
     gerador = Gerador(session, usuario, semanas, semente)
@@ -489,6 +490,8 @@ def gerar_amigos(session: Session) -> tuple[int, int]:
         usuario.aparelho = amigo.aparelho
         usuario.instalado = amigo.instalado
         usuario.bloqueado_em = agora - amigo.bloqueado_ha if amigo.bloqueado_ha else None
+        # Como as contas criadas antes de 26/11/2026, que recebiam as fichas modelo ao entrar.
+        copiar_fichas_modelo(session, usuario.id)
         fichas = session.exec(
             select(Ficha).where(Ficha.usuario_id == usuario.id).order_by(col(Ficha.ordem))
         ).all()

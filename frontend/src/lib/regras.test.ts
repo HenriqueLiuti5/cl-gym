@@ -2,21 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   avisoProgressao,
-  blocos,
   evolucao,
   inicioDaSemana,
   mediasSemanais,
-  ordenarPorSugestao,
   pesoComMedia7,
-  proximaOpcao,
   treinosFeitos,
   ultimaVez,
 } from "./regras";
-import type { Ficha, FichaExercicio, RegistroDiario, Serie, Sessao } from "./tipos";
+import type { RegistroDiario, Serie, Sessao } from "./tipos";
 
 const base = { atualizado_em: "2026-11-01T00:00:00Z", excluido: false };
-
-const ficha = (id: string, ordem: number): Ficha => ({ ...base, id, nome: id, ordem });
 
 const sessao = (id: string, fichaId: string | null, quando: string, finalizada = true): Sessao => ({
   ...base,
@@ -44,20 +39,6 @@ const serie = (
   repeticoes: reps,
 });
 
-const item = (id: string, ordem: number, grupo: number | null = null): FichaExercicio => ({
-  ...base,
-  id,
-  ficha_id: "f",
-  exercicio_id: `ex-${id}`,
-  ordem,
-  series: 3,
-  alvo_reps: 8,
-  aquecimento: false,
-  grupo_biset: grupo,
-  alternativas: [`alt1-${id}`, `alt2-${id}`],
-  observacao: null,
-});
-
 const dia = (data: string, campos: Partial<RegistroDiario>): RegistroDiario => ({
   ...base,
   id: data,
@@ -69,36 +50,7 @@ const dia = (data: string, campos: Partial<RegistroDiario>): RegistroDiario => (
   ...campos,
 });
 
-describe("sugestão do dia", () => {
-  const fichas = [ficha("push", 1), ficha("pull", 2), ficha("leg", 3), ficha("upper", 4)];
-
-  it("nunca feita vem primeiro, depois a feita há mais tempo", () => {
-    const sessoes = [
-      sessao("s1", "push", "2026-11-17T20:00:00Z"),
-      sessao("s2", "pull", "2026-11-18T20:00:00Z"),
-      sessao("s3", "upper", "2026-11-10T20:00:00Z"),
-    ];
-    expect(ordenarPorSugestao(fichas, sessoes).map((x) => x.ficha.id)).toEqual([
-      "leg",
-      "upper",
-      "push",
-      "pull",
-    ]);
-  });
-
-  it("desempata pela ordem e ignora treino não terminado ou excluído", () => {
-    const sessoes = [
-      sessao("s1", "push", "2026-11-17T20:00:00Z", false),
-      { ...sessao("s2", "pull", "2026-11-17T20:00:00Z"), excluido: true },
-    ];
-    expect(ordenarPorSugestao(fichas, sessoes).map((x) => x.ficha.id)).toEqual([
-      "push",
-      "pull",
-      "leg",
-      "upper",
-    ]);
-  });
-
+describe("treinos feitos", () => {
   it("conta só os treinos terminados", () => {
     expect(
       treinosFeitos([
@@ -152,25 +104,6 @@ describe("última vez e progressão", () => {
 
   it("evolução usa a maior carga de cada sessão", () => {
     expect(evolucao("supino", series, sessoes).map((p) => p.valor)).toEqual([18, 20, 22]);
-  });
-});
-
-describe("ficha", () => {
-  it("junta os itens do mesmo bi-set num bloco", () => {
-    const itens = [item("a", 0), item("b", 1), item("c", 2, 1), item("d", 3, 1), item("e", 4)];
-    expect(blocos(itens).map((b) => b.map((i) => i.id))).toEqual([
-      ["a"],
-      ["b"],
-      ["c", "d"],
-      ["e"],
-    ]);
-  });
-
-  it("Plano B gira entre o planejado e as duas opções", () => {
-    const i = item("a", 0);
-    expect(proximaOpcao(i, "ex-a")).toBe("alt1-a");
-    expect(proximaOpcao(i, "alt1-a")).toBe("alt2-a");
-    expect(proximaOpcao(i, "alt2-a")).toBe("ex-a");
   });
 });
 

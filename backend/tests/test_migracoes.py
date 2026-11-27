@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -62,3 +63,35 @@ def test_migracao_que_recria_tabela_com_dados(
         assert conexao.execute(text("SELECT usuario_id FROM fichas")).scalar() == usuario
         assert conexao.execute(text("PRAGMA foreign_key_check")).fetchall() == []
     engine.dispose()
+
+
+def test_substitutos_entram_vazios_e_o_codigo_antigo_segue_inserindo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A migração dos substitutos roda antes do deploy, com o código antigo no ar: os exercícios
+    que já existem ficam com [] e quem insere sem a coluna (o código antigo) também."""
+    url = f"sqlite:///{tmp_path / 'substitutos.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+    config = Config(str(ALEMBIC_INI))
+    command.upgrade(config, "fe60c77a65eb")  # antes dos substitutos
+
+    inserir = text(
+        "INSERT INTO exercicios (id, atualizado_em, excluido, nome, grupo_muscular, imagens, "
+        "instrucoes, versao) VALUES (:id, '2026-11-01 10:00:00', 0, 'Supino', 'Peito', '[]', "
+        "'[]', 1)"
+    )
+    engine = create_engine(url)
+    with engine.begin() as conexao:
+        conexao.execute(inserir, {"id": "e1"})
+    engine.dispose()
+
+    command.upgrade(config, "head")
+
+    engine = create_engine(url)
+    with engine.begin() as conexao:
+        conexao.execute(inserir, {"id": "e2"})  # como o código antigo: sem a coluna nova
+        valores = conexao.execute(text("SELECT substitutos FROM exercicios ORDER BY id")).all()
+    engine.dispose()
+    assert [json.loads(v) for (v,) in valores] == [[], []]
+
+    command.downgrade(config, "fe60c77a65eb")

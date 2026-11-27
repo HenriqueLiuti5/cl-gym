@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
+from backend.models import MAX_SUBSTITUTOS
 from backend.tests.dados import (
     T0,
     TABELAS,
@@ -13,6 +15,7 @@ from backend.tests.dados import (
     pacote_vazio,
     treino_completo,
 )
+from backend.tests.test_isolamento import carregar_catalogo_simples
 
 
 def test_envio_e_download_completo(client: TestClient) -> None:
@@ -115,6 +118,7 @@ def test_exclusao_logica_e_propagada(client: TestClient) -> None:
 
 
 def test_item_da_ficha_com_plano_b_e_bi_set(client: TestClient) -> None:
+    # O app não usa mais o bi-set, mas versões antigas ainda mandam o campo: continua valendo.
     corpo, _ = treino_completo()
     alt1, alt2 = novo_id(), novo_id()
     # As alternativas podem vir depois no mesmo envio.
@@ -171,6 +175,62 @@ def test_registro_do_dia_invalido_e_recusado(client: TestClient, campo: str, val
     corpo, _ = treino_completo()
     corpo["registros_diarios"][0][campo] = valor
     assert client.post("/api/sync", json=corpo).status_code == 422
+
+
+# --- Substitutos dos exercícios ------------------------------------------------------------
+
+
+def test_substitutos_do_catalogo_e_proprios(session: Session, client: TestClient) -> None:
+    agachamento = carregar_catalogo_simples(session)
+    principal, proprio = novo_id(), novo_id()
+    corpo = {
+        "exercicios": [
+            # Aponta para o catálogo e para um exercício que vem depois no mesmo envio.
+            exercicio(principal, nome="Agachamento no banco", substitutos=[proprio, agachamento]),
+            exercicio(proprio, nome="Agachamento sumô"),
+        ]
+    }
+    resposta = client.post("/api/sync", json=corpo)
+    assert resposta.status_code == 200, resposta.text
+
+    exercicios = {e["id"]: e for e in client.get("/api/sync").json()["exercicios"]}
+    assert exercicios[principal]["substitutos"] == [proprio, agachamento]  # a ordem é mantida
+    assert exercicios[proprio]["substitutos"] == []  # sem o campo, fica vazio
+    assert exercicios[agachamento]["substitutos"] == []
+
+
+def test_substituto_inexistente_nao_grava_nada(client: TestClient) -> None:
+    resposta = client.post(
+        "/api/sync", json={"exercicios": [exercicio(novo_id(), substitutos=[novo_id()])]}
+    )
+    assert resposta.status_code == 409
+    assert "exercicios" in resposta.json()["detail"]
+    assert pacote_vazio(client.get("/api/sync").json())
+
+
+@pytest.mark.parametrize("caso", ["mais de cinco", "repetido", "ele mesmo"])
+def test_substitutos_invalidos_sao_recusados(client: TestClient, caso: str) -> None:
+    id_ = novo_id()
+    outros = [novo_id() for _ in range(MAX_SUBSTITUTOS + 1)]
+    substitutos = {
+        "mais de cinco": outros,
+        "repetido": [outros[0], outros[0]],
+        "ele mesmo": [id_],
+    }[caso]
+    corpo = {
+        "exercicios": [
+            exercicio(id_, substitutos=substitutos),
+            *(exercicio(o) for o in outros),
+        ]
+    }
+    assert client.post("/api/sync", json=corpo).status_code == 422
+    assert pacote_vazio(client.get("/api/sync").json())
+
+
+def test_cinco_substitutos_valem(client: TestClient) -> None:
+    outros = [novo_id() for _ in range(MAX_SUBSTITUTOS)]
+    corpo = {"exercicios": [exercicio(novo_id(), substitutos=outros), *map(exercicio, outros)]}
+    assert client.post("/api/sync", json=corpo).status_code == 200
 
 
 # --- Metas ----------------------------------------------------------------------------------

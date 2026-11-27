@@ -40,13 +40,21 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            // Imagens de demonstração (free-exercise-db): ficam guardadas para usar offline.
+            // Imagens de demonstração (free-exercise-db), também as miniaturas da lista de
+            // exercícios: ficam guardadas para usar offline. O catálogo tem uns 300 exercícios,
+            // com 2 imagens cada; 1000 dá para todas, com folga para crescer.
             urlPattern: ({ url }) => url.hostname === "raw.githubusercontent.com",
             handler: "CacheFirst",
             options: {
               cacheName: "imagens-exercicios",
-              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              // Busca com CORS (o GitHub responde com Access-Control-Allow-Origin: *) e guarda só
+              // as respostas 200. Uma <img> comum pede sem CORS, e a resposta "opaca" conta uns 7 MB
+              // na cota do aparelho (o Chrome infla o tamanho de propósito): mil delas passariam de
+              // 7 GB, dividindo a cota com o banco local. Com CORS, conta o tamanho de verdade
+              // (uns 60 KB cada).
+              fetchOptions: { mode: "cors", credentials: "omit" },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],

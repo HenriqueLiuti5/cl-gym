@@ -43,7 +43,7 @@ class Login(BaseModel):
     token: str
     expira_em: datetime
     usuario: UsuarioOut
-    # Primeiro login: a conta acabou de ser criada, com as fichas modelo.
+    # Primeiro login: a conta acabou de ser criada, ainda sem fichas.
     novo: bool
 
 

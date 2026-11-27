@@ -98,7 +98,7 @@ backend/
   config.py             Settings (banco, Google, sessão, convites)
   db.py                 engine, sessão, tipos UTCDateTime e ListaUUID
   auth.py               verificação do ID token do Google, token de sessão, usuário atual
-  conta.py              primeiro login (cópia das fichas modelo) e apagar conta
+  conta.py              criar a conta (sem fichas) e apagar conta
   models.py             tabelas + esquemas de sincronização
   sync.py               lógica de envio/download, separada por usuário
   routers/auth.py       GET /api/auth/config, POST /api/auth/google, POST /api/auth/dev (só local)
@@ -107,9 +107,10 @@ backend/
   routers/convites.py   GET /api/convites/{id} e POST /api/convites/verificar (sem login)
   routers/admin.py      /api/admin/usuarios e /api/admin/convites (só o ADMIN_EMAIL)
   routers/sync.py       GET/POST /api/sync
+  routers/modelos.py    GET /api/modelos (fichas modelo, para "Usar um modelo pronto")
   seed.py               carrega o catálogo do TOML
   dados_dev.py          dados inventados para a conta de dev (só SQLite)
-  data/treino.toml      exercícios do catálogo e fichas modelo
+  data/treino.toml      exercícios do catálogo (com substitutos) e fichas modelo
   migrations/           Alembic
   tests/                conftest (login simulado, sem rede), dados de exemplo e testes
 scripts/preparar.py     prepara um computador novo (.env de dev, banco, seed, npm ci)
@@ -122,7 +123,13 @@ frontend/
   src/main.tsx, App.tsx        entrada, rotas por hash (#/treino/<id>) e abas de baixo
   src/lib/db.ts                banco local (Dexie): espelho das tabelas + `pendente`
   src/lib/sync.ts              envia pendentes, baixa desde o cursor, guarda o cursor; gatilhos automáticos
-  src/lib/regras.ts            sugestão do dia, última vez, avisos de progressão, bi-set
+  src/lib/regras.ts            última vez, avisos de progressão, treinos feitos, datas
+  src/lib/fichas.ts            criar e editar treino: rascunho, limites, o que gravar, Plano B
+                               sugerido, busca e grupos do seletor de exercício
+  src/lib/modelos.ts           copiar um modelo pronto, lista "Seus treinos", resumo do treino
+  src/lib/treino.ts            começar, finalizar e cancelar o treino; gravar e apagar a série
+  src/lib/linhaSerie.ts        linha da série: ler kg e reps, limites, eco da própria gravação
+  src/lib/troca.ts             opções de "Trocar" (ficha, Plano B e parecidos)
   src/lib/metas.ts             metas: limites, salvar offline, progresso, "na meta", parabéns
   src/lib/estatisticas.ts      números da Evolução (treinos, recordes, peso, alimentação, escala)
   src/lib/curiosidades.ts      curiosidades com comparações (elefantes, Pão de Açúcar, ovos...)
@@ -134,8 +141,12 @@ frontend/
   src/lib/admin.ts             API e contas da área de administração
   src/lib/instalar.ts          instalar o app: pedido nativo do Chrome, plataforma, instalado
   src/lib/navegacao.ts         ordem das telas ao arrastar o dedo e o lado de cada transição
-  src/telas/                   Login, Convite, BoasVindas, Inicio, FichaTela, Treino, Dia,
-                               Graficos, Conta, Admin
+  src/telas/                   Login, Convite, BoasVindas, Inicio, FichaTela, EditarFicha,
+                               Treino, Dia, Graficos, Conta, Admin
+  src/componentes/EscolherExercicio.tsx  seletor de exercício da edição (adicionar, Plano B,
+                               criar exercício próprio)
+  src/componentes/ModelosProntos.tsx     janela "Modelos prontos"
+  src/componentes/TrocarExercicio.tsx    janela "Trocar" do treino em andamento
   src/componentes/Palco.tsx    área das telas: arrastar troca de aba, voltar pela borda, transições
   src/componentes/Entrada.tsx  peças do login e do convite: logo, botão do Google, código, login dev
   src/componentes/admin/       Usuários e Convites da administração
@@ -170,7 +181,8 @@ backend é a cópia na nuvem (backup e troca de aparelho), não a fonte das tela
   uma mudança local ainda pendente e mais nova que a do servidor é mantida.
 - **Quando sincroniza (automático):** ao abrir o app e ao voltar para ele depois de 5 min ou mais
   em segundo plano; uns 2 s depois de salvar algo fora do treino (registro do dia, perfil, metas,
-  ajuste da ficha, cancelar treino), juntando mudanças seguidas (`sincronizarEmBreve`); ao terminar um
+  criar, editar ou apagar um treino, copiar um modelo, criar um exercício, cancelar treino),
+  juntando mudanças seguidas (`sincronizarEmBreve`); ao terminar um
   treino; quando a internet volta (evento `online`); e no botão "Sincronizar" da tela Conta. As
   séries do treino em andamento não disparam sincronização: vão juntas no fim. Se o app for para
   segundo plano com uma sincronização agendada, ela sai na hora. Nunca em intervalo fixo. Uma
@@ -208,14 +220,20 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 - **Convite** (não sincroniza): `codigo` (8 caracteres de `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, sem
   0/O e 1/I/L, único; mostrado como `XXXX-XXXX`), `criado_em`, `expira_em` (24 h), `usado_em`,
   `usado_por` e `cancelado_em`. Situação: cancelado, usado, expirado ou válido.
-- **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT) e midia_url (GIF
-  ou vídeo). Os do catálogo vêm do seed e só o seed altera; cada um pode criar os seus. É o único
-  download que traz `usuario_id` (nulo = catálogo, só leitura no app).
-- **Ficha**: treino nomeado (Push, Pull, Leg day, Upper) e `ordem`. As do catálogo são **modelos**:
-  não são baixadas, só copiadas para o usuário no primeiro login (`backend/conta.py`).
+- **Exercicio**: nome, grupo_muscular, imagens (URLs), instrucoes (passos em PT), midia_url (GIF
+  ou vídeo) e `substitutos` (até 5 `exercicio_id` parecidos, do mais parecido ao menos, sem
+  repetir e sem o próprio; padrão `[]`). Os do catálogo vêm do seed e só o seed altera; cada um
+  pode criar os seus (no app, sem imagens nem substitutos). É o único download que traz
+  `usuario_id` (nulo = catálogo, só leitura no app).
+- **Ficha**: treino nomeado e `ordem` (só a ordem de exibição). As do catálogo são **modelos
+  prontos**: não vêm na sincronização; o app os pede em `GET /api/modelos` e, quando a pessoa
+  escolhe um, copia localmente com ids novos e envia a cópia pela sincronização normal (por isso
+  não existe rota de cópia).
 - **FichaExercicio**: exercício planejado na ficha, com `ordem`, `series`, `alvo_reps` (int),
-  `aquecimento` (bool), `grupo_biset` (int ou nulo), `alternativas` (lista ordenada de até 2
-  `exercicio_id`, o Plano B) e `observacao` (dicas de execução).
+  `aquecimento` (bool), `alternativas` (lista ordenada de até 2 `exercicio_id`, o Plano B) e
+  `observacao` (dicas de execução). `grupo_biset` (int ou nulo) continua no banco e na
+  sincronização porque versões antigas do app mandam o campo, mas o app não usa mais o bi-set
+  (26/11/2026): itens novos gravam nulo, e a edição não mexe no valor dos que já existem.
 - **Sessao**: um treino feito (ficha_id, iniciada_em, finalizada_em, observacao).
 - **Serie**: uma série registrada (sessao_id, exercicio_id **realmente feito**,
   ficha_exercicio_id planejado, numero, carga_kg, repeticoes). Cada exercício, inclusive as
@@ -233,11 +251,24 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
 
 - **Os treinos não seguem dia da semana.** O Henrique falta e muda o descanso; ele escolhe a
   ficha que quiser.
-- **Sugestão do dia**: destacar a ficha feita **há mais tempo** (nunca feita vem primeiro;
-  desempate por `ordem`). É só sugestão, todas as fichas continuam selecionáveis.
+- **Tela de treinos** (sem sugestão do dia desde 26/11/2026): "Seus treinos" na `ordem`, cada um
+  com "N exercícios · M séries" e quando foi feito ("há 3 dias", "nunca feito"), e sempre "Criar
+  treino" e "Usar um modelo pronto". Conta sem fichas vê um cartão com os dois botões; num
+  aparelho que ainda não sincronizou (sem `cursor`), "Buscando seus treinos…" no lugar dele.
+- **Criar e editar treinos** (`#/editar/nova` e `#/editar/<id>`, pedido em 26/11/2026): o
+  rascunho fica em memória e só grava em "Salvar", numa transação, regravando só os itens que
+  mudaram. Exercício novo entra com 3 × 10, aquecimento só se for o primeiro e o Plano B sugerido
+  com os 2 primeiros `substitutos`. O seletor busca sem acento, mostra os grupos na ordem do
+  catálogo (`ORDEM_GRUPOS` em `lib/fichas.ts`, a mesma do `treino.toml`) e, no Plano B, os
+  parecidos primeiro. "Criar exercício" grava um exercício próprio. Apagar o treino é exclusão
+  lógica da ficha e dos itens; as sessões ficam para o histórico. Mudanças não salvas pedem
+  confirmação ao voltar.
+- **Modelos prontos:** copiar um modelo cria uma ficha da pessoa (ids novos, sem bi-set), que ela
+  edita como qualquer outra. Ver a lista precisa de internet; a cópia, não.
 - **Última vez**: para cada exercício, mostrar carga × reps da sessão mais recente em que ele foi
   feito.
-- **Trocar**: alterna entre o exercício planejado e as alternativas do item (Plano B); a série é
+- **Trocar**: abre a janela "Trocar exercício" com o planejado e o Plano B do item ("Na ficha") e
+  os `substitutos` do planejado ("Parecidos"), cada um com a última carga feita; a série é
   gravada com o `exercicio_id` do que foi feito.
 - **Gráfico de evolução**: por exercício, a maior `carga_kg` de cada sessão ao longo do tempo.
 - **Evolução** (decidido em 24/11/2026: "muitas informações e curiosidades", gráficos fáceis de
@@ -255,10 +286,13 @@ Registros sincronizáveis têm `id`, `atualizado_em`, `excluido` e `versao` (vej
   guardada por aparelho (`metas_comemoradas`) e volta se a meta mudar. As do dia a dia não
   comemoram: "na meta" é ±10% em calorias e carbo, e chegar pelo menos nela em proteína, água e
   treinos por semana.
-- **Registrar a série:** cada linha tem "Anterior" (carga × reps da mesma série na última vez),
-  kg (já vem com a carga sugerida), reps (a dica é o alvo) e um botão de marcar. Marcar grava a
-  série e pinta a linha de verde; tocar de novo desmarca (apaga a série) e deixa os números nos
-  campos. Mudar um número de uma série marcada faz o botão gravar de novo.
+- **Registrar a série** (sem confirmar desde 26/11/2026): cada linha tem "Anterior" (carga ×
+  reps da mesma série na última vez), kg (já vem com a carga sugerida) e reps (a dica é o alvo).
+  Com os dois preenchidos e dentro dos limites, a série grava sozinha a cada tecla, sempre no
+  mesmo registro, e fica anotada (número e visto em verde). Esvaziar um campo apaga a série ao
+  sair dele. Valor fora do limite não grava e mostra o erro no campo. A linha reconhece o eco da
+  própria gravação pela hora (`lib/linhaSerie.ts`), para não desfazer o que foi digitado depois.
+  "Finalizar treino" pergunta antes se nenhuma série foi anotada.
 - Sem timer de descanso na primeira versão.
 - **Perfil (primeiro acesso):** enquanto faltar nome, altura ou idade, o app abre a tela de
   boas-vindas pedindo nome, peso, altura e idade antes de qualquer outra. O **peso atual** é o
@@ -291,7 +325,9 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
   Convites. O arrasto não começa em gráficos (`data-sem-arrasto`: lá ele mostra os valores),
   campos, janelas, listas que rolam para o lado e na barra de abas, e nunca vira toque. No app
   instalado, arrastar da borda esquerda numa tela interna volta (vai para o link `data-voltar` da
-  `BarraTopo`), porque o iPhone instalado não tem esse gesto. Toda troca de tela desliza do lado
+  `BarraTopo`), porque o iPhone instalado não tem esse gesto. A edição do treino é interna, no
+  nível do treino em andamento, e o voltar dela pergunta antes de descartar mudanças não
+  salvas. Toda troca de tela desliza do lado
   certo, e "reduzir movimento" desliga as animações. Ordem em `lib/navegacao.ts`, gesto em
   `componentes/Palco.tsx`, animações no `index.css` ("Troca de tela").
 - **Troca de tela suave** (pedido em 25/11/2026): ao soltar o arrasto, a tela e a nova andam
@@ -322,6 +358,14 @@ rodar o seed de novo só regrava o que mudou (com versão nova, para os celulare
 mude slugs em uso, porque o histórico está ligado a eles. Demonstrações: imagens da base de domínio
 público **free-exercise-db** e um link para busca no YouTube. Não copie GIFs com direitos autorais
 para o repositório.
+
+Base completa desde 26/11/2026: 282 exercícios, todos com as duas imagens e com `substitutos` (de
+2 a 4, salvo cadeira abdutora e monster walk, que só têm um ao outro), agrupados no arquivo por
+grupo muscular na ordem de `ORDEM_GRUPOS` (`frontend/src/lib/fichas.ts`): Peito, Ombro, Tríceps,
+Costas, Trapézio, Bíceps, Antebraço, Posterior de ombro, Quadríceps, Posterior de coxa, Glúteo,
+Panturrilha, Adutores, Abdutores, Abdômen e Lombar. Um grupo novo precisa entrar nos dois lugares.
+Ficaram de fora alongamentos, cardio, pliometria, olímpicos e strongman. Exercício novo não reusa a
+pasta de imagens de outro. O seed recusa substituto que não existe, repetido ou o próprio.
 
 ## Plano multiusuário (v1 para os amigos)
 
@@ -383,18 +427,18 @@ mudar à vontade (nova migração, sem migrar dados).
   "sobe o peso". Se alguma série ficou **2 ou mais abaixo do alvo**, mostra "pesado demais".
 - **Aquecimento:** `aquecimento: bool` no item da ficha (normalmente só o primeiro exercício).
   Mostra a etiqueta "Aquecimento" e "1×10 leve (uns 50% do peso)". Não conta como série.
-- **Bi-set:** `grupo_biset: int | None` no item da ficha. Itens da mesma ficha com o mesmo valor são
-  feitos em sequência, descansando só depois do par. Se um tiver mais séries, as voltas extras são
-  só dele.
+- **Sem bi-set** (decidido em 26/11/2026): cada exercício fica no seu cartão, na ordem da ficha.
+  O campo `grupo_biset` só existe por compatibilidade (veja "Modelo de dados").
 - **Plano B com até 2 opções por item da ficha** (`alternativas`: lista ordenada de
   `exercicio_id`), no lugar do `substituto_id` único do exercício. A série é gravada com o
   exercício realmente feito, e cada um tem o próprio histórico.
-- **Última vez**, **sugestão do dia** (ficha feita há mais tempo) e **gráfico de evolução**
-  continuam como estão em "Regras de negócio".
+- **Última vez** e **gráfico de evolução** continuam como estão em "Regras de negócio". A
+  sugestão do dia saiu em 26/11/2026.
 - **Contador de treinos feitos** (sessões finalizadas) na tela inicial.
-- **Fichas iniciais:** no primeiro login, o usuário recebe uma cópia das fichas modelo do
-  `treino.toml` (o treino v2 do Henrique: Push, Pull, Leg day e Upper, com Plano B). Depois cada
-  um edita as suas.
+- **Conta nova sem fichas** (decidido em 26/11/2026, no lugar da cópia no primeiro login): cada um
+  cria os seus treinos ou copia um modelo pronto do `treino.toml` (o treino v2 do Henrique: Push,
+  Pull, Leg day e Upper, com Plano B). As contas criadas antes ficam com a cópia que receberam.
+  `copiar_fichas_modelo` (`backend/conta.py`) só serve ao `backend.dados_dev`.
 
 ### Peso e alimentação
 - Tabela **RegistroDiario** (sincronizável, por usuário, uma por `data`): `peso_kg` (em jejum),
@@ -517,5 +561,10 @@ dele.
 - [x] Gestos de app (arrastar troca de aba, voltar pela borda no app instalado, transições) e
   barra de navegação do Android no tema do celular (25/11/2026)
 - [x] Migração dos convites no Neon (25/11/2026, depois de a produção ficar com erro 500)
+- [x] Treinos personalizáveis (criar, editar e apagar), conta nova sem fichas e modelos prontos,
+  catálogo de 282 exercícios com imagens e substitutos, troca durante o treino, série sem
+  confirmar, sem bi-set e sem sugestão do dia (26–27/11/2026; ainda não publicado)
+- [ ] Publicar isso: migração `e7d6db65bfa0` (substitutos) no Neon **antes** do push, depois o
+  seed no Neon (grava o catálogo novo e tira o bi-set das fichas modelo), como em "Deploy"
 - [ ] `ADMIN_EMAIL` na Vercel (sem ele, ninguém vê a Administração nem gera convites)
 - [ ] Instalação nos celulares e convite dos amigos

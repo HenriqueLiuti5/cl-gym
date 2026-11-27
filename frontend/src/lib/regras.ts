@@ -1,6 +1,6 @@
 // Regras do treino, calculadas sobre os dados locais (veja "Regras de negócio" no CLAUDE.md).
 
-import type { Ficha, FichaExercicio, RegistroDiario, Serie, Sessao } from "./tipos";
+import type { RegistroDiario, Serie, Sessao } from "./tipos";
 
 const ativos = <T extends { excluido: boolean }>(lista: T[]) => lista.filter((r) => !r.excluido);
 
@@ -13,29 +13,6 @@ export function dataLocal(data: Date = new Date()): string {
 
 export function treinosFeitos(sessoes: Sessao[]): number {
   return ativos(sessoes).filter((s) => s.finalizada_em).length;
-}
-
-/** Fichas na ordem da sugestão: nunca feita primeiro, depois a feita há mais tempo. */
-export function ordenarPorSugestao(
-  fichas: Ficha[],
-  sessoes: Sessao[],
-): { ficha: Ficha; ultima: string | null }[] {
-  const ultima = new Map<string, string>();
-  for (const s of ativos(sessoes)) {
-    if (!s.ficha_id || !s.finalizada_em) continue;
-    const atual = ultima.get(s.ficha_id);
-    if (!atual || s.iniciada_em > atual) ultima.set(s.ficha_id, s.iniciada_em);
-  }
-  return ativos(fichas)
-    .map((ficha) => ({ ficha, ultima: ultima.get(ficha.id) ?? null }))
-    .sort((a, b) => {
-      if (a.ultima !== b.ultima) {
-        if (a.ultima === null) return -1;
-        if (b.ultima === null) return 1;
-        return Date.parse(a.ultima) - Date.parse(b.ultima);
-      }
-      return a.ficha.ordem - b.ficha.ordem;
-    });
 }
 
 export interface UltimaVez {
@@ -80,34 +57,6 @@ export function avisoProgressao(alvo: number, series: Serie[]): Aviso {
     sobe: primeira !== undefined && primeira.repeticoes >= alvo + 2,
     pesado: ordenadas.some((s) => s.repeticoes <= alvo - 2),
   };
-}
-
-/** Agrupa os itens em blocos: sozinho ou bi-set (mesmo `grupo_biset`), na ordem da ficha. */
-export function blocos(itens: FichaExercicio[]): FichaExercicio[][] {
-  const ordenados = ativos(itens).sort((a, b) => a.ordem - b.ordem);
-  const resultado: FichaExercicio[][] = [];
-  const porGrupo = new Map<number, FichaExercicio[]>();
-  for (const item of ordenados) {
-    if (item.grupo_biset === null) {
-      resultado.push([item]);
-      continue;
-    }
-    const bloco = porGrupo.get(item.grupo_biset);
-    if (bloco) bloco.push(item);
-    else {
-      const novo = [item];
-      porGrupo.set(item.grupo_biset, novo);
-      resultado.push(novo);
-    }
-  }
-  return resultado;
-}
-
-/** Próximo exercício ao tocar em "Plano B": planejado → 1ª opção → 2ª opção → planejado. */
-export function proximaOpcao(item: FichaExercicio, atual: string): string {
-  const opcoes = [item.exercicio_id, ...item.alternativas];
-  const i = opcoes.indexOf(atual);
-  return opcoes[(i + 1) % opcoes.length]!;
 }
 
 export interface Ponto {

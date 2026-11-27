@@ -9,6 +9,7 @@ from backend.convites import situacao
 from backend.dados_dev import AMIGOS, FUSO, gerar, gerar_amigos, id_meta, id_registro_diario, main
 from backend.models import (
     Convite,
+    Ficha,
     Meta,
     MetaBase,
     RegistroDiario,
@@ -29,6 +30,13 @@ USUARIO = uuid.UUID("0d7d4f9c-472a-4926-aa6a-4ad9e3cfe362")
 def com_catalogo(session: Session) -> Session:
     carregar_catalogo(session, ler_catalogo(ARQUIVO_PADRAO))
     return session
+
+
+def fichas_de(session: Session, usuario_id: uuid.UUID | None) -> list[Ficha]:
+    """As fichas da pessoa (ou as fichas modelo, com `None`)."""
+    dono = col(Ficha.usuario_id)
+    filtro = dono.is_(None) if usuario_id is None else dono == usuario_id
+    return list(session.exec(select(Ficha).where(filtro)).all())
 
 
 def ativos(session: Session, modelo: type[Sessao] | type[Serie]) -> int:
@@ -56,6 +64,10 @@ def test_gera_meses_de_dados_validos(com_catalogo: Session) -> None:
     usuario = session.exec(select(Usuario).where(Usuario.email == EMAIL)).one()
     assert usuario.google_sub == f"dev:{EMAIL}"  # a mesma conta do "Entrar como dev"
     assert (usuario.nome, usuario.altura_cm, usuario.idade) == ("Dev", 178, 28)
+    # A conta nova começa sem fichas, mas a de dev recebe a cópia dos modelos para treinar.
+    assert sorted(f.nome for f in fichas_de(session, usuario.id)) == sorted(
+        f.nome for f in fichas_de(session, None)
+    )
 
     # Tudo passaria pela validação do envio do app (limites, datas com fuso, metas).
     for modelo, base in (
@@ -109,6 +121,8 @@ def test_rodar_de_novo_nao_duplica_nem_apaga_o_que_foi_lancado(com_catalogo: Ses
 
     gerar(session, EMAIL, semanas=6)
     assert (ativos(session, Sessao), ativos(session, Serie)) == (treinos, series)
+    # As fichas copiadas dos modelos não se repetem.
+    assert len(fichas_de(session, usuario.id)) == len(fichas_de(session, None))
     session.refresh(lancado)
     assert lancado.kcal == 1234
     assert session.get(Usuario, usuario.id).nome == "Henrique"
@@ -133,6 +147,9 @@ def test_amigos_de_exemplo_para_a_administracao(com_catalogo: Session) -> None:
     assert ativos(session, Sessao) == sum(len(a.treinos) for a in AMIGOS)
     for sessao in session.exec(select(Sessao)).all():
         SessaoBase.model_validate(sessao.model_dump())
+        assert sessao.ficha_id is not None  # os amigos treinam com a cópia dos modelos
+    modelos = len(fichas_de(session, None))
+    assert all(len(fichas_de(session, u.id)) == modelos for u in amigos)
 
     convites = session.exec(select(Convite)).all()
     assert sorted(situacao(c) for c in convites) == ["usado", "valido"]

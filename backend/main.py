@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from backend.routers import admin, auth, conta, convites, sync
+from backend.routers import admin, auth, conta, convites, modelos, sync
 
 app = FastAPI(
     title="CL Gym API",
@@ -14,6 +14,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(conta.router)
 app.include_router(sync.router)
+app.include_router(modelos.router)
 app.include_router(convites.router)
 app.include_router(admin.router)
 

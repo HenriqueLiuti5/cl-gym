@@ -73,7 +73,7 @@ def test_catalogo_e_baixado_por_todos(
 def test_fichas_modelo_nao_sao_baixadas(
     session: Session, client: TestClient, client_b: TestClient
 ) -> None:
-    # A e B entraram antes de existir o modelo: não recebem cópia e não veem o modelo.
+    # Os modelos não vêm na sincronização: o app os pede em GET /api/modelos.
     carregar_catalogo_simples(session)
     for c in (client, client_b):
         pacote = c.get("/api/sync").json()
@@ -150,6 +150,7 @@ def _referencias_ao_a(ids_a: dict[str, str]) -> list[tuple[str, dict[str, Any]]]
         corpo[tabela][0][campo] = valor
         casos.append((tabela, corpo))
 
+    caso("exercicios", "substitutos", [ids_a["ex"]])
     caso("ficha_exercicios", "ficha_id", ids_a["ficha"])
     caso("ficha_exercicios", "exercicio_id", ids_a["ex"])
     caso("ficha_exercicios", "alternativas", [ids_a["ex"]])
@@ -166,7 +167,7 @@ def test_b_nao_referencia_registros_do_a(client: TestClient, client_b: TestClien
     antes = client.get("/api/sync").json()
 
     casos = _referencias_ao_a(ids_a)
-    assert len(casos) == 8
+    assert len(casos) == 9
     for tabela, corpo in casos:
         resposta = client_b.post("/api/sync", json=corpo)
         assert resposta.status_code == 409, (tabela, resposta.text)
@@ -192,6 +193,7 @@ def test_pode_referenciar_exercicio_do_catalogo(
     agachamento = carregar_catalogo_simples(session)
     for c in (client, client_b):
         corpo, _ = treino_completo()
+        corpo["exercicios"][0]["substitutos"] = [agachamento]
         corpo["ficha_exercicios"][0]["alternativas"] = [agachamento]
         corpo["series"][0]["exercicio_id"] = agachamento
         resposta = c.post("/api/sync", json=corpo)

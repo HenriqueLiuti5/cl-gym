@@ -10,7 +10,9 @@ e `excluido` faz exclusão lógica para propagar remoções.
 
 O `usuario_id` nunca vem do app: o servidor o define a partir do token de sessão. Exercícios e
 fichas com `usuario_id` nulo são do catálogo (carregado pelo seed): os exercícios são baixados
-por todos, e as fichas são os modelos copiados para cada usuário no primeiro login.
+por todos, e as fichas são os modelos prontos. A conta nova começa sem fichas; o app oferece os
+modelos em "Usar um modelo pronto" (`GET /api/modelos`) e envia a cópia escolhida, com ids novos,
+pela sincronização normal.
 """
 
 import datetime as dt
@@ -154,6 +156,8 @@ class DoUsuario(SQLModel):
 
 # --- Exercícios -----------------------------------------------------------------------------
 
+MAX_SUBSTITUTOS = 5
+
 
 class ExercicioBase(Sincronizavel):
     nome: str = Field(min_length=1, max_length=120)
@@ -163,6 +167,22 @@ class ExercicioBase(Sincronizavel):
     instrucoes: list[str] = Field(default_factory=list, sa_type=JSON)
     # Link de GIF/vídeo de demonstração.
     midia_url: str | None = Field(default=None, max_length=500)
+    # Exercícios parecidos, do mais parecido ao menos (até 5). O app sugere os 2 primeiros como
+    # Plano B ao montar um treino e mostra todos na troca durante o treino. O `server_default`
+    # fica no banco: o código anterior a este campo insere exercícios sem a coluna.
+    substitutos: list[uuid.UUID] = Field(
+        default_factory=list, sa_type=ListaUUID, sa_column_kwargs={"server_default": "[]"}
+    )
+
+    @model_validator(mode="after")
+    def _validar_substitutos(self) -> Self:
+        if len(self.substitutos) > MAX_SUBSTITUTOS:
+            raise ValueError(f"no máximo {MAX_SUBSTITUTOS} substitutos")
+        if len(set(self.substitutos)) != len(self.substitutos):
+            raise ValueError("substituto repetido")
+        if self.id in self.substitutos:
+            raise ValueError("o exercício não pode ser substituto de si mesmo")
+        return self
 
 
 class Exercicio(ComVersao, DoCatalogoOuUsuario, ExercicioBase, table=True):
@@ -178,12 +198,13 @@ class ExercicioOut(ComVersao, DoCatalogoOuUsuario, ExercicioBase):
 
 class FichaBase(Sincronizavel):
     nome: str = Field(min_length=1, max_length=60)
-    # Ordem de exibição e desempate da sugestão do dia.
+    # Ordem de exibição.
     ordem: int = Field(default=0, ge=0)
 
 
 class Ficha(ComVersao, DoCatalogoOuUsuario, FichaBase, table=True):
-    """Com `usuario_id` nulo é uma ficha modelo: não é baixada, só copiada no primeiro login."""
+    """Com `usuario_id` nulo é uma ficha modelo: não vem na sincronização. O app a mostra em
+    "Usar um modelo pronto" (`GET /api/modelos`) e envia a cópia como uma ficha da pessoa."""
 
     __tablename__ = "fichas"
 
@@ -204,7 +225,9 @@ class FichaExercicioBase(Sincronizavel):
     alvo_reps: int = Field(ge=1, le=100)
     # Faz 1×10 leve (~50% do peso) antes; não conta como série.
     aquecimento: bool = False
-    # Itens da mesma ficha com o mesmo número são feitos em sequência (bi-set).
+    # Bi-set (itens com o mesmo número feitos em sequência): o app não usa mais desde 26/11/2026.
+    # Fica no banco e na sincronização porque versões antigas do app ainda mandam o campo e as
+    # fichas que já existem guardam o valor.
     grupo_biset: int | None = Field(default=None, ge=1, le=100)
     # Plano B: até 2 exercícios, em ordem de preferência, para quando o aparelho estiver ocupado.
     alternativas: list[uuid.UUID] = Field(default_factory=list, sa_type=ListaUUID)
@@ -228,6 +251,31 @@ class FichaExercicio(ComVersao, DoCatalogoOuUsuario, FichaExercicioBase, table=T
 
 class FichaExercicioOut(ComVersao, FichaExercicioBase):
     pass
+
+
+# --- Fichas modelo (GET /api/modelos) -------------------------------------------------------
+
+
+class ItemModeloOut(SQLModel):
+    """Um exercício da ficha modelo, só com o que o app copia (sem bi-set)."""
+
+    exercicio_id: uuid.UUID
+    ordem: int
+    series: int
+    alvo_reps: int
+    aquecimento: bool
+    alternativas: list[uuid.UUID]
+    observacao: str | None
+
+
+class FichaModeloOut(SQLModel):
+    """Ficha modelo do catálogo. O app copia localmente, com ids novos, e envia a cópia pela
+    sincronização normal (por isso não existe rota de cópia)."""
+
+    id: uuid.UUID
+    nome: str
+    ordem: int
+    exercicios: list[ItemModeloOut]
 
 
 # --- Treinos realizados ---------------------------------------------------------------------

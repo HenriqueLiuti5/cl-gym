@@ -11,9 +11,10 @@ describe("chaveDaRota", () => {
     expect(chaveDaRota(rota("admin"))).toBe("admin/usuarios");
   });
 
-  it("ignora o id da ficha e do treino", () => {
+  it("ignora o id da ficha, do treino e da edição", () => {
     expect(chaveDaRota(rota("ficha/abc"))).toBe("ficha");
     expect(chaveDaRota(rota("treino/abc"))).toBe("treino");
+    expect(chaveDaRota(rota("editar/nova"))).toBe("editar");
     expect(chaveDaRota([])).toBe("");
   });
 });
@@ -43,6 +44,8 @@ describe("telaVizinha", () => {
   it("não arrasta nas telas internas", () => {
     expect(telaVizinha(rota("ficha/abc"), 1)).toBeNull();
     expect(telaVizinha(rota("treino/abc"), -1)).toBeNull();
+    expect(telaVizinha(rota("editar/abc"), 1)).toBeNull();
+    expect(telaVizinha(rota("editar/nova"), -1)).toBeNull();
   });
 });
 
@@ -58,6 +61,14 @@ describe("sentidoDaTransicao", () => {
     expect(sentidoDaTransicao(rota("ficha/abc"), rota("treino/x"))).toBe(1);
     expect(sentidoDaTransicao(rota("treino/x"), [])).toBe(-1);
     expect(sentidoDaTransicao(rota("admin/convites"), rota("conta"))).toBe(-1);
+  });
+
+  it("a edição do treino é interna, um nível abaixo da ficha", () => {
+    expect(sentidoDaTransicao(rota("ficha/abc"), rota("editar/abc"))).toBe(1);
+    expect(sentidoDaTransicao([], rota("editar/nova"))).toBe(1);
+    expect(sentidoDaTransicao(rota("editar/abc"), rota("ficha/abc"))).toBe(-1);
+    expect(sentidoDaTransicao(rota("editar/nova"), rota("ficha/xyz"))).toBe(-1);
+    expect(sentidoDaTransicao(rota("editar/abc"), [])).toBe(-1);
   });
 
   it("não desliza quando a tela é a mesma", () => {

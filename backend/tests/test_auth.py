@@ -6,10 +6,12 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from backend.auth import VerificadorGoogle, criar_token_sessao, get_verificador_google
+from backend.conta import copiar_fichas_modelo
 from backend.main import app
+from backend.models import Ficha
 from backend.seed import Catalogo, carregar_catalogo
 from backend.tests.conftest import (
     CLIENT_ID,
@@ -213,7 +215,7 @@ def test_conta_mostra_se_e_admin(entrar: Entrar, anonimo: TestClient) -> None:
     assert anonimo.get("/api/conta", headers=com_token(token_b)).json()["admin"] is False
 
 
-# --- Fichas modelo no primeiro login --------------------------------------------------------
+# --- Conta nova sem fichas -----------------------------------------------------------------
 
 
 def catalogo_com_modelo() -> Catalogo:
@@ -237,12 +239,7 @@ def catalogo_com_modelo() -> Catalogo:
                             "aquecimento": True,
                             "alternativas": ["supino-maquina"],
                         },
-                        {
-                            "exercicio": "triceps-corda",
-                            "series": 3,
-                            "alvo_reps": 12,
-                            "grupo_biset": 1,
-                        },
+                        {"exercicio": "triceps-corda", "series": 3, "alvo_reps": 12},
                     ],
                 }
             ],
@@ -250,35 +247,47 @@ def catalogo_com_modelo() -> Catalogo:
     )
 
 
-def test_primeiro_login_copia_as_fichas_modelo(
-    session: Session, entrar: Entrar, anonimo: TestClient
+def test_conta_nova_comeca_sem_fichas(
+    session: Session, entrar: Entrar, anonimo: TestClient, id_token_google: GerarIdToken
 ) -> None:
+    # Desde 26/11/2026 o login não copia mais as fichas modelo: o app oferece "Criar treino" e
+    # "Usar um modelo pronto" (GET /api/modelos).
     carregar_catalogo(session, catalogo_com_modelo())
 
-    pacote_a = anonimo.get("/api/sync", headers=com_token(entrar())).json()
-    assert [f["nome"] for f in pacote_a["fichas"]] == ["Push"]
-    itens = sorted(pacote_a["ficha_exercicios"], key=lambda i: i["ordem"])
-    assert [(i["series"], i["alvo_reps"]) for i in itens] == [(3, 8), (3, 12)]
-    assert itens[0]["aquecimento"] is True
-    assert len(itens[0]["alternativas"]) == 1
-    assert itens[1]["grupo_biset"] == 1
-    assert all(i["ficha_id"] == pacote_a["fichas"][0]["id"] for i in itens)
-    # Os exercícios do catálogo vêm junto (as cópias apontam para eles).
+    login = anonimo.post("/api/auth/google", json={"id_token": id_token_google()}).json()
+    assert login["novo"] is True
+    pacote_a = anonimo.get("/api/sync", headers=com_token(login["token"])).json()
+    assert (pacote_a["fichas"], pacote_a["ficha_exercicios"]) == ([], [])
+    # Os exercícios do catálogo continuam vindo.
     assert len(pacote_a["exercicios"]) == 3
 
-    # O B recebe a própria cópia, com outros ids.
+    # O mesmo para quem entra com convite.
     pacote_b = anonimo.get("/api/sync", headers=com_token(entrar(EMAIL_B, "sub-bruno"))).json()
-    assert len(pacote_b["fichas"]) == 1
-    assert pacote_b["fichas"][0]["id"] != pacote_a["fichas"][0]["id"]
+    assert (pacote_b["fichas"], pacote_b["ficha_exercicios"]) == ([], [])
+
+    # E entrar de novo também não copia.
+    pacote_a = anonimo.get("/api/sync", headers=com_token(entrar())).json()
+    assert pacote_a["fichas"] == []
+    assert session.exec(select(Ficha).where(col(Ficha.usuario_id).is_not(None))).all() == []
 
 
-def test_segundo_login_nao_copia_de_novo(
+def test_conta_antiga_fica_com_as_fichas_que_recebeu(
     session: Session, entrar: Entrar, anonimo: TestClient
 ) -> None:
+    # Contas criadas antes de 26/11/2026 receberam a cópia dos modelos ao entrar.
     carregar_catalogo(session, catalogo_com_modelo())
-    entrar()
     token = entrar()
-    assert len(anonimo.get("/api/sync", headers=com_token(token)).json()["fichas"]) == 1
+    usuario_id = uuid.UUID(anonimo.get("/api/conta", headers=com_token(token)).json()["id"])
+    copiar_fichas_modelo(session, usuario_id)
+    session.commit()
+    antes = anonimo.get("/api/sync", headers=com_token(token)).json()
+    assert [f["nome"] for f in antes["fichas"]] == ["Push"]
+    assert len(antes["ficha_exercicios"]) == 2
+
+    # Entrar de novo não apaga nem duplica nada.
+    depois = anonimo.get("/api/sync", headers=com_token(entrar())).json()
+    assert depois["fichas"] == antes["fichas"]
+    assert depois["ficha_exercicios"] == antes["ficha_exercicios"]
 
 
 # --- Login de desenvolvimento ---------------------------------------------------------------

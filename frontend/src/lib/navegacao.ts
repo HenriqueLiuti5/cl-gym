@@ -26,8 +26,11 @@ const GRUPOS: string[][] = [
   PARTES_ADMIN.map((p) => `admin/${p.id}`),
 ];
 
-/** Telas internas, abertas a partir de uma aba; o treino é aberto a partir da ficha. */
-const PROFUNDIDADE: Record<string, number> = { ficha: 1, admin: 1, treino: 2 };
+/**
+ * Telas internas, abertas a partir de uma aba; o treino e a edição do treino (#/editar/<id> ou
+ * #/editar/nova) são abertos a partir da ficha ou da tela de treinos.
+ */
+const PROFUNDIDADE: Record<string, number> = { ficha: 1, admin: 1, treino: 2, editar: 2 };
 
 /** A rota sem o que não muda a tela: "#/graficos" é a parte Treino; o id da ficha não conta. */
 export function chaveDaRota(rota: string[]): string {

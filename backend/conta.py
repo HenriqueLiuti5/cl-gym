@@ -1,5 +1,7 @@
-"""Conta do usuário: quem pode entrar (convite, admin, bloqueio), primeiro login (com a cópia
-das fichas modelo) e apagar a conta."""
+"""Conta do usuário: quem pode entrar (convite, admin, bloqueio), criar a conta e apagá-la.
+
+A conta nova começa sem fichas (desde 26/11/2026): o app oferece "Criar treino" e "Usar um modelo
+pronto" (`GET /api/modelos`). As contas criadas antes ficam com a cópia que receberam."""
 
 import uuid
 from collections.abc import Callable
@@ -45,7 +47,10 @@ def _id_da_copia(usuario_id: uuid.UUID, modelo_id: uuid.UUID) -> uuid.UUID:
 
 
 def copiar_fichas_modelo(session: Session, usuario_id: uuid.UUID) -> int:
-    """Dá ao usuário uma cópia das fichas modelo do catálogo. Devolve quantas fichas copiou."""
+    """Dá ao usuário uma cópia das fichas modelo do catálogo. Devolve quantas fichas copiou.
+
+    O login não chama mais (a conta nova começa sem fichas e o app copia o modelo que a pessoa
+    escolher); fica para as contas de dados inventados (`backend.dados_dev`)."""
     modelos = session.exec(
         select(Ficha).where(col(Ficha.usuario_id).is_(None), col(Ficha.excluido).is_(False))
     ).all()
@@ -89,7 +94,6 @@ def copiar_fichas_modelo(session: Session, usuario_id: uuid.UUID) -> int:
                     series=item.series,
                     alvo_reps=item.alvo_reps,
                     aquecimento=item.aquecimento,
-                    grupo_biset=item.grupo_biset,
                     alternativas=list(item.alternativas),
                     observacao=item.observacao,
                 )
@@ -104,7 +108,8 @@ def entrar(
     identidade: IdentidadeGoogle,
     antes_de_criar: Callable[[Usuario], None] | None = None,
 ) -> tuple[Usuario, bool]:
-    """Acha o usuário pelo `sub` do Google ou cria um novo. Devolve (usuário, se é novo).
+    """Acha o usuário pelo `sub` do Google ou cria um novo, sem fichas. Devolve (usuário, se é
+    novo).
 
     `antes_de_criar` roda na mesma transação da conta nova (ex.: usar o convite); se ela falhar,
     quem chamou desfaz tudo e nada é gravado."""
@@ -121,7 +126,6 @@ def entrar(
         session.flush()
         if antes_de_criar is not None:
             antes_de_criar(usuario)
-        copiar_fichas_modelo(session, usuario.id)
     else:
         # O e-mail pode mudar na conta Google. O nome do Google só entra se a pessoa não tiver
         # um: depois do primeiro acesso, o nome é o que ela escolheu no app.

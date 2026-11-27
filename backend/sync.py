@@ -55,7 +55,7 @@ MAX_REGISTROS_POR_ENVIO = 5000
 
 @dataclass(frozen=True)
 class Referencia:
-    campo: str  # pode ser um UUID, nulo ou uma lista de UUIDs (alternativas)
+    campo: str  # pode ser um UUID, nulo ou uma lista de UUIDs (alternativas, substitutos)
     alvo: type[ComVersao]
 
 
@@ -69,7 +69,7 @@ class Tabela:
 
 # Ordem das chaves estrangeiras: pais antes dos filhos.
 TABELAS: tuple[Tabela, ...] = (
-    Tabela("exercicios", Exercicio, ExercicioOut),
+    Tabela("exercicios", Exercicio, ExercicioOut, (Referencia("substitutos", Exercicio),)),
     Tabela("fichas", Ficha, FichaOut),
     Tabela(
         "ficha_exercicios",

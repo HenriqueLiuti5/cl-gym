@@ -15,6 +15,12 @@ export interface Exercicio extends Sincronizavel {
   imagens: string[];
   instrucoes: string[];
   midia_url: string | null;
+  /**
+   * Exercícios parecidos (ids, do mais parecido ao menos), vindos do catálogo: são a sugestão de
+   * Plano B ao montar um treino e as opções de troca durante o treino. Falta nos registros baixados
+   * antes de o campo existir: trate como [].
+   */
+  substitutos?: string[];
   /** null = catálogo (só leitura). */
   usuario_id?: string | null;
 }

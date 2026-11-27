@@ -9,8 +9,9 @@ mudou no arquivo é regravado — e recebe uma `versao` nova, então os celulare
 Itens removidos de uma ficha no arquivo são marcados como excluídos.
 
 Tudo o que o seed grava é do catálogo (`usuario_id` nulo): os exercícios são baixados por todos e
-ninguém os altera pelo app; as fichas são modelos, copiados para cada usuário no primeiro login
-(mudar uma ficha modelo depois não altera as cópias que já existem).
+ninguém os altera pelo app; as fichas são modelos prontos, que o app oferece em "Usar um modelo
+pronto" (`GET /api/modelos`) e copia para quem escolher (mudar uma ficha modelo depois não altera
+as cópias que já existem).
 """
 
 import sys
@@ -24,7 +25,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlmodel import Session, col, select
 
-from backend.models import MAX_ALTERNATIVAS, ComVersao, Exercicio, Ficha, FichaExercicio
+from backend.models import (
+    MAX_ALTERNATIVAS,
+    MAX_SUBSTITUTOS,
+    ComVersao,
+    Exercicio,
+    Ficha,
+    FichaExercicio,
+)
 from backend.sync import proxima_versao
 
 ARQUIVO_PADRAO = Path(__file__).parent / "data" / "treino.toml"
@@ -50,6 +58,8 @@ class ExercicioSeed(_Estrito):
     imagens: list[str] = []
     instrucoes: list[str] = []
     midia_url: str | None = Field(default=None, max_length=500)
+    # Slugs de até 5 exercícios parecidos, do mais parecido ao menos.
+    substitutos: list[str] = Field(default=[], max_length=MAX_SUBSTITUTOS)
 
 
 class ItemSeed(_Estrito):
@@ -57,7 +67,6 @@ class ItemSeed(_Estrito):
     series: int = Field(ge=1, le=20)
     alvo_reps: int = Field(ge=1, le=100)
     aquecimento: bool = False
-    grupo_biset: int | None = Field(default=None, ge=1, le=100)
     # Plano B: slugs de até 2 exercícios, em ordem de preferência.
     alternativas: list[str] = Field(default=[], max_length=MAX_ALTERNATIVAS)
     observacao: str | None = Field(default=None, max_length=300)
@@ -82,6 +91,14 @@ class Catalogo(_Estrito):
         if len({f.slug for f in self.fichas}) != len(self.fichas):
             raise ValueError("slug de ficha repetido")
         conhecidos = set(slugs)
+        for e in self.exercicios:
+            if e.slug in e.substitutos:
+                raise ValueError(f"'{e.slug}' não pode ser substituto de si mesmo")
+            if len(set(e.substitutos)) != len(e.substitutos):
+                raise ValueError(f"substituto repetido em '{e.slug}'")
+            for slug in e.substitutos:
+                if slug not in conhecidos:
+                    raise ValueError(f"substituto '{slug}' de '{e.slug}' não existe")
         for ficha in self.fichas:
             usados = [item.exercicio for item in ficha.exercicios]
             if len(usados) != len(set(usados)):
@@ -155,6 +172,7 @@ def carregar_catalogo(session: Session, catalogo: Catalogo) -> int:
                 "imagens": e.imagens,
                 "instrucoes": e.instrucoes,
                 "midia_url": e.midia_url,
+                "substitutos": [id_de("exercicio", slug) for slug in e.substitutos],
                 "excluido": False,
             },
         )
@@ -184,7 +202,8 @@ def carregar_catalogo(session: Session, catalogo: Catalogo) -> int:
                     "series": item.series,
                     "alvo_reps": item.alvo_reps,
                     "aquecimento": item.aquecimento,
-                    "grupo_biset": item.grupo_biset,
+                    # Sem bi-set: tira o valor dos modelos gravados antes de 26/11/2026.
+                    "grupo_biset": None,
                     "alternativas": [id_de("exercicio", slug) for slug in item.alternativas],
                     "observacao": item.observacao,
                     "excluido": False,
