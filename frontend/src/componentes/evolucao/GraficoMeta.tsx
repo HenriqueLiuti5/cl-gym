@@ -5,7 +5,7 @@
 // mostrando onde a pessoa tem que chegar; nas barras, uma linha tracejada na altura da meta
 // atravessa o gráfico, e as barras que chegaram lá ficam cheias (as outras, apagadas).
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -96,6 +96,57 @@ function RotuloPonto({ viewBox, texto }: { viewBox?: { x?: number; y?: number; w
   );
 }
 
+/** Quanto a dica fica na tela depois que o dedo sai do gráfico, para dar tempo de ler. */
+const DICA_DEPOIS_DO_TOQUE_MS = 2500;
+
+/**
+ * No toque, o Recharts mostra a dica e não a esconde mais: ela só some no `mouseleave`, que o
+ * celular não manda depois de arrastar o dedo, e aí fica tampando o gráfico. Aqui a dica (com o
+ * ponto ativo e a faixa) some um pouco depois de soltar o dedo, ou na hora ao tocar fora do
+ * gráfico. Com mouse, nada muda.
+ */
+function useDicaNoToque() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const grafico = ref.current;
+    if (!grafico) return;
+    let espera: number | undefined;
+    let aberta = false;
+
+    const esconder = () => {
+      window.clearTimeout(espera);
+      if (!aberta) return;
+      aberta = false;
+      // O mesmo evento de quando o mouse sai do gráfico: o Recharts limpa a dica, o ponto e a faixa.
+      grafico
+        .querySelector(".recharts-wrapper")
+        ?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+    };
+    const tocou = (e: TouchEvent) => {
+      if (!grafico.contains(e.target as Node)) return esconder();
+      window.clearTimeout(espera);
+      aberta = true;
+    };
+    const soltou = () => {
+      window.clearTimeout(espera);
+      espera = window.setTimeout(esconder, DICA_DEPOIS_DO_TOQUE_MS);
+    };
+
+    document.addEventListener("touchstart", tocou, { capture: true, passive: true });
+    grafico.addEventListener("touchend", soltou, { passive: true });
+    grafico.addEventListener("touchcancel", soltou, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", tocou, { capture: true });
+      grafico.removeEventListener("touchend", soltou);
+      grafico.removeEventListener("touchcancel", soltou);
+      window.clearTimeout(espera);
+    };
+  }, []);
+
+  return ref;
+}
+
 function Valor({ cor, valor, nome, tracejado = false }: { cor: string; valor: string; nome: string; tracejado?: boolean }) {
   return (
     <p className="flex items-center gap-2 text-[15px]">
@@ -138,6 +189,7 @@ export function GraficoMeta({
   descricao: string;
   altura?: number;
 }) {
+  const dica = useDicaNoToque();
   let ultimo = -1;
   pontos.forEach((p, i) => {
     if (p.valor !== null) ultimo = i;
@@ -216,7 +268,7 @@ export function GraficoMeta({
   const margem = { top: 24, right: 26, left: 0, bottom: 0 };
   return (
     // data-sem-arrasto: arrastar o dedo no gráfico mostra os valores, não troca de tela.
-    <div role="img" aria-label={descricao} className="-mx-1" data-sem-arrasto>
+    <div ref={dica} role="img" aria-label={descricao} className="-mx-1" data-sem-arrasto>
       <ResponsiveContainer width="100%" height={altura}>
         {tipo === "linha" ? (
           <LineChart data={dados} margin={margem}>

@@ -323,7 +323,10 @@ Decidido em 24/11/2026: **simples, profissional e sem cara de IA**, pensado para
   seguindo o dedo, na ordem Treinos → Dia → Evolução (Treino → Corpo → Nutrição → Curiosidades) →
   Conta, como abas de cima dentro das de baixo no Android; na Administração, entre Usuários e
   Convites. O arrasto não começa em gráficos (`data-sem-arrasto`: lá ele mostra os valores),
-  campos, janelas, listas que rolam para o lado e na barra de abas, e nunca vira toque. No app
+  campos, janelas, listas que rolam para o lado e na barra de abas, e nunca vira toque. No
+  toque, a dica do gráfico some 2,5 s depois de soltar o dedo, ou na hora ao tocar fora dele: o
+  Recharts só a esconde no `mouseleave`, que o celular não manda (`useDicaNoToque`, em
+  `GraficoMeta.tsx`; bug de 27/11/2026, a dica ficava tampando o gráfico). No app
   instalado, arrastar da borda esquerda numa tela interna volta (vai para o link `data-voltar` da
   `BarraTopo`), porque o iPhone instalado não tem esse gesto. A edição do treino é interna, no
   nível do treino em andamento, e o voltar dela pergunta antes de descartar mudanças não
