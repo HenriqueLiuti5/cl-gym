@@ -437,7 +437,9 @@ mudar à vontade (nova migração, sem migrar dados).
 - **Contador de treinos feitos** (sessões finalizadas) na tela inicial.
 - **Conta nova sem fichas** (decidido em 26/11/2026, no lugar da cópia no primeiro login): cada um
   cria os seus treinos ou copia um modelo pronto do `treino.toml` (o treino v2 do Henrique: Push,
-  Pull, Leg day e Upper, com Plano B). As contas criadas antes ficam com a cópia que receberam.
+  Pull, Leg day e Upper, com Plano B). Na publicação (27/11/2026), as cópias que os amigos
+  tinham recebido foram apagadas no Neon (exclusão lógica; sessões e séries ficaram), e as do
+  Henrique ficaram, só sem o bi-set.
   `copiar_fichas_modelo` (`backend/conta.py`) só serve ao `backend.dados_dev`.
 
 ### Peso e alimentação
@@ -563,8 +565,8 @@ dele.
 - [x] Migração dos convites no Neon (25/11/2026, depois de a produção ficar com erro 500)
 - [x] Treinos personalizáveis (criar, editar e apagar), conta nova sem fichas e modelos prontos,
   catálogo de 282 exercícios com imagens e substitutos, troca durante o treino, série sem
-  confirmar, sem bi-set e sem sugestão do dia (26–27/11/2026; ainda não publicado)
-- [ ] Publicar isso: migração `e7d6db65bfa0` (substitutos) no Neon **antes** do push, depois o
-  seed no Neon (grava o catálogo novo e tira o bi-set das fichas modelo), como em "Deploy"
+  confirmar, sem bi-set e sem sugestão do dia (26–27/11/2026)
+- [x] Publicado em 27/11/2026: migração `e7d6db65bfa0` no Neon antes do push, depois o seed; as
+  fichas dos amigos apagadas e o bi-set tirado das do Henrique, com o histórico mantido
 - [ ] `ADMIN_EMAIL` na Vercel (sem ele, ninguém vê a Administração nem gera convites)
 - [ ] Instalação nos celulares e convite dos amigos
